@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        full_name: data.user.user_metadata?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
+        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
+      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -87,7 +87,7 @@ export const AuthService = {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { first_name: firstName, full_name: firstName } }
+      options: { data: { full_name: firstName, first_name: firstName } }
     });
 
     if (error) throw error;
@@ -263,7 +263,7 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      console.log("🚀 AdminService: Synchronisation CRM...");
+      console.log("🚀 AdminService: Synchronisation Pipeline...");
       
       const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
       if (pError) console.error("❌ Erreur Profiles:", pError.message);
@@ -274,24 +274,22 @@ export const AdminService = {
       const allProfiles = profiles || [];
       const allAudits = audits || [];
 
-      const allUserIds = new Set([
-        ...allProfiles.map(p => p.id),
-        ...allAudits.map(a => a.user_id)
-      ]);
-
-      const leads: LeadData[] = Array.from(allUserIds).map(userId => {
-        const profile = allProfiles.find(p => p.id === userId);
-        const userAudits = allAudits.filter(a => a.user_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // On map les profils pour construire les leads
+      const leads: LeadData[] = allProfiles.map(profile => {
+        const userAudits = allAudits
+          .filter(a => a.user_id === profile.id)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
         const userObj: UserProfile = {
-          id: userId,
-          email: profile?.email || (lastAudit?.inputs?.email) || "Email non trouvé",
-          firstName: profile?.full_name || profile?.first_name || (lastAudit?.inputs?.projectName?.split(' ')[0]) || "Prospect Inconnu",
-          role: (profile?.role as any) || 'user',
-          createdAt: profile?.created_at || lastAudit?.created_at || new Date().toISOString(),
-          consultingValue: profile?.consulting_value || 0,
-          purchasedProducts: profile?.purchased_products || []
+          id: profile.id,
+          email: profile.email || "Email masqué",
+          firstName: profile.full_name || profile.first_name || "Nouveau Prospect",
+          role: profile.role || 'user',
+          createdAt: profile.created_at,
+          consultingValue: profile.consulting_value || 0,
+          purchasedProducts: profile.purchased_products || []
         };
 
         return {
@@ -306,13 +304,40 @@ export const AdminService = {
             results: lastAudit.results,
             verdictLabel: lastAudit.verdict_label
           } : null,
-          status: (profile?.status as any) || 'new'
+          status: profile.status || 'new'
         };
+      });
+
+      // On gère les audits orphelins (si l'utilisateur s'est inscrit mais que l'audit n'a pas été lié par id mais par email par exemple)
+      const orphanAudits = allAudits.filter(a => !leads.some(l => l.user.id === a.user_id));
+      orphanAudits.forEach(audit => {
+         leads.push({
+           user: {
+             id: audit.user_id,
+             email: audit.inputs?.email || "Audit Orphelin",
+             firstName: audit.inputs?.projectName?.split(' ')[0] || "Audit Anonyme",
+             role: 'user',
+             createdAt: audit.created_at,
+             consultingValue: 0,
+             purchasedProducts: []
+           },
+           lastSimulation: {
+             id: audit.id,
+             auditId: audit.id.toString().split('-')[0].toUpperCase(),
+             userId: audit.user_id,
+             name: audit.project_name,
+             date: audit.created_at,
+             inputs: audit.inputs,
+             results: audit.results,
+             verdictLabel: audit.verdict_label
+           },
+           status: 'new'
+         });
       });
 
       return leads.sort((a, b) => new Date(b.user.createdAt).getTime() - new Date(a.user.createdAt).getTime());
     } catch (e) { 
-      console.error("💥 Erreur fatale AdminService:", e);
+      console.error("💥 Erreur AdminService:", e);
       return []; 
     }
   },

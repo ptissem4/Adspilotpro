@@ -43,7 +43,6 @@ export default function App() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  // Charger un audit en attente au démarrage (si le navigateur a rafraîchi)
   useEffect(() => {
     const pending = AuthService.getPendingAudit();
     if (pending && currentUser) {
@@ -124,8 +123,8 @@ export default function App() {
     try {
       const verdict = calculateVerdict(pending.inputs, pending.results);
       await AuditService.saveAudit(user, pending.inputs, pending.results, verdict);
-      AuthService.setPendingAudit(null); // On nettoie après succès
-      showNotification("Audit lié à votre compte ! 🚀");
+      AuthService.setPendingAudit(null);
+      showNotification("Audit Andromeda synchronisé avec succès ! 🚀");
     } catch (e) {
       console.error("Link Error:", e);
     } finally {
@@ -168,7 +167,6 @@ export default function App() {
   const handleAuthenticated = (user: UserProfile) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-    // Si un audit en attente existe, le useEffect s'en chargera via la dépendance [currentUser]
   };
 
   const handleUpdateCurrentAudit = async () => {
