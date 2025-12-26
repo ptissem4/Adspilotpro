@@ -6,6 +6,7 @@ const ADMIN_EMAIL = 'shopiflight@gmail.com';
 const STORAGE_KEYS = { 
   CURRENT_SESSION: 'ads_pilot_session', 
   AUDITS_LOCAL: 'ads_pilot_audits_local',
+  PENDING_AUDIT: 'ads_pilot_pending_audit',
   GUIDES: 'ads_pilot_guides'
 };
 
@@ -41,26 +42,17 @@ const DEFAULT_GUIDES: Guide[] = [
 
 export const AuthService = {
   login: async (email: string, password: string): Promise<UserProfile> => {
-    if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré (URL manquante).");
+    if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré.");
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({ 
       email: email.trim(), 
       password 
     });
     
-    if (authError) {
-      if (authError.message === 'Failed to fetch') throw new Error("Impossible de contacter le serveur. Vérifiez votre connexion ou l'URL du projet.");
-      throw authError;
-    }
-    
+    if (authError) throw authError;
     if (!data.user) throw new Error("Utilisateur introuvable.");
 
-    // Récupération du profil
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
 
     const isExplicitAdmin = data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const role = isExplicitAdmin ? 'admin' : (profile?.role || 'user');
@@ -80,7 +72,7 @@ export const AuthService = {
   },
 
   register: async (email: string, password: string, firstName: string): Promise<UserProfile> => {
-    if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré (URL manquante).");
+    if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré.");
 
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -88,17 +80,12 @@ export const AuthService = {
       options: { data: { first_name: firstName } }
     });
 
-    if (error) {
-      if (error.message === 'Failed to fetch') throw new Error("Erreur réseau : Impossible d'atteindre Supabase. Vérifiez l'URL du projet.");
-      throw error;
-    }
-    
+    if (error) throw error;
     if (!data.user) throw new Error("Erreur lors de la création du compte.");
 
     const isExplicitAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const role = isExplicitAdmin ? 'admin' : 'user';
 
-    // Création silencieuse du profil
     try {
       await supabase.from('profiles').upsert({
         id: data.user.id,
@@ -107,9 +94,7 @@ export const AuthService = {
         role: role,
         status: 'new'
       });
-    } catch (e) {
-      console.warn("Profil non créé en base, mais auth réussie.");
-    }
+    } catch (e) {}
 
     const user: UserProfile = {
       id: data.user.id,
@@ -136,22 +121,37 @@ export const AuthService = {
     try { return JSON.parse(data); } catch (e) { return null; }
   },
 
+  // Gestion de l'audit en attente (survit au refresh)
+  setPendingAudit: (audit: any) => {
+    if (audit) localStorage.setItem(STORAGE_KEYS.PENDING_AUDIT, JSON.stringify(audit));
+    else localStorage.removeItem(STORAGE_KEYS.PENDING_AUDIT);
+  },
+  
+  getPendingAudit: () => {
+    const data = localStorage.getItem(STORAGE_KEYS.PENDING_AUDIT);
+    return data ? JSON.parse(data) : null;
+  },
+
+  // Fix error: Add missing recordPurchase method to AuthService
   recordPurchase: async (email: string, product: string) => {
-    const data = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
-    if (!data) return;
+    if (!configDiagnostic.hasUrl) return;
     try {
-      const user = JSON.parse(data) as UserProfile;
-      if (!user.purchasedProducts) user.purchasedProducts = [];
-      if (!user.purchasedProducts.includes(product)) {
-        user.purchasedProducts.push(product);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(user));
+      const cleanEmail = email.toLowerCase().trim();
+      const { data: profile } = await supabase.from('profiles').select('purchased_products').eq('email', cleanEmail).maybeSingle();
+      const existing = profile?.purchased_products || [];
+      if (!existing.includes(product)) {
+        const updated = [...existing, product];
+        await supabase.from('profiles').update({ purchased_products: updated }).eq('email', cleanEmail);
         
-        await supabase.from('profiles').update({
-          purchased_products: user.purchasedProducts
-        }).eq('id', user.id);
+        // Synchronisation du cache local
+        const currentUser = AuthService.getCurrentUser();
+        if (currentUser && currentUser.email.toLowerCase() === cleanEmail) {
+          currentUser.purchasedProducts = updated;
+          localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(currentUser));
+        }
       }
     } catch (e) {
-      console.error("Error recording purchase:", e);
+      console.error("Erreur lors de l'enregistrement de l'achat:", e);
     }
   }
 };
@@ -169,13 +169,17 @@ export const AuditService = {
       verdict_label: verdictLabel
     };
 
-    // Tentative d'insertion Supabase
-    const { data, error } = await supabase.from('audits').insert(auditData).select().single();
+    let serverId = 'local_' + Date.now();
+    try {
+      const { data, error } = await supabase.from('audits').insert(auditData).select().single();
+      if (!error && data) serverId = data.id;
+    } catch (e) {
+      console.error("Save error (Supabase):", e);
+    }
     
-    // On enregistre TOUJOURS en local en backup immédiat pour éviter les pertes dues à la latence
     const historyItem: SimulationHistory = { 
-      id: data?.id || 'local_' + Date.now(),
-      auditId: data?.id?.split('-')[0].toUpperCase() || `AD-NEW-${Date.now().toString().slice(-4)}`,
+      id: serverId,
+      auditId: serverId.toString().split('-')[0].toUpperCase(),
       userId: user.id,
       name: auditData.project_name,
       date: new Date().toISOString(),
@@ -184,30 +188,17 @@ export const AuditService = {
       verdictLabel
     };
 
+    // Mise à jour immédiate du cache local pour un affichage instantané
     const allLocal = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
-    localStorage.setItem(STORAGE_KEYS.AUDITS_LOCAL, JSON.stringify([historyItem, ...allLocal.filter((i: any) => i.id !== historyItem.id)]));
+    const updatedLocal = [historyItem, ...allLocal.filter((i: any) => i.id !== historyItem.id)];
+    localStorage.setItem(STORAGE_KEYS.AUDITS_LOCAL, JSON.stringify(updatedLocal));
 
-    if (error) {
-      console.warn("Audit sauvegardé en local uniquement (erreur Supabase):", error);
-      return historyItem;
-    }
-
-    return {
-      id: data.id,
-      auditId: data.id.split('-')[0].toUpperCase(),
-      userId: data.user_id,
-      name: data.project_name,
-      date: data.created_at,
-      inputs: data.inputs,
-      results: data.results,
-      verdictLabel: data.verdict_label
-    };
+    return historyItem;
   },
 
   getAuditHistory: async (userId: string): Promise<SimulationHistory[]> => {
-    // On récupère le local d'abord
-    const localData = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
-    const userLocal = localData.filter((s: any) => s.userId === userId);
+    const allLocal = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
+    const userLocal = allLocal.filter((s: any) => s.userId === userId);
 
     try {
       const { data, error } = await supabase
@@ -216,11 +207,11 @@ export const AuditService = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) return userLocal;
 
       const serverData = (data || []).map(s => ({
         id: s.id,
-        auditId: s.id.split('-')[0].toUpperCase(),
+        auditId: s.id.toString().split('-')[0].toUpperCase(),
         userId: s.user_id,
         name: s.project_name,
         date: s.created_at,
@@ -229,12 +220,10 @@ export const AuditService = {
         verdictLabel: s.verdict_label
       }));
 
-      // On merge les deux, en priorisant le serveur mais en gardant ce qui n'y est pas encore
+      // Fusion intelligente : Serveur prioritaire, mais on garde les locaux non encore synchronisés
       const merged = [...serverData];
       userLocal.forEach((local: any) => {
-          if (!merged.find(m => m.id === local.id)) {
-              merged.push(local);
-          }
+          if (!merged.find(m => m.id === local.id)) merged.push(local);
       });
       
       return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -246,22 +235,20 @@ export const AuditService = {
   deleteAudit: async (id: string) => {
     const allLocal = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
     localStorage.setItem(STORAGE_KEYS.AUDITS_LOCAL, JSON.stringify(allLocal.filter((s: any) => s.id !== id)));
-    
-    if (!id.startsWith('local_')) {
+    if (!id.toString().startsWith('local_')) {
       await supabase.from('audits').delete().eq('id', id);
     }
   },
 
   updateAudit: async (id: string, updates: any) => {
+    if (!id.toString().startsWith('local_')) {
+      await supabase.from('audits').update(updates).eq('id', id);
+    }
     const allLocal = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
     const index = allLocal.findIndex((s: any) => s.id === id);
     if (index !== -1) {
       allLocal[index] = { ...allLocal[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.AUDITS_LOCAL, JSON.stringify(allLocal));
-    }
-
-    if (!id.startsWith('local_')) {
-      await supabase.from('audits').update(updates).eq('id', id);
     }
   }
 };
@@ -289,7 +276,7 @@ export const AdminService = {
           },
           lastSimulation: {
             id: lastAudit.id,
-            auditId: lastAudit.id.split('-')[0].toUpperCase(),
+            auditId: lastAudit.id.toString().split('-')[0].toUpperCase(),
             userId: lastAudit.user_id,
             name: lastAudit.project_name,
             date: lastAudit.created_at,

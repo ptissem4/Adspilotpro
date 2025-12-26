@@ -39,17 +39,21 @@ export default function App() {
     niche: 'other', ltv: '', creativeFormats: [], dataSource: 'manual', projectName: ''
   });
 
-  const [pendingAudit, setPendingAudit] = useState<{projectName: string, inputs: CalculatorInputs, results: CalculationResults} | null>(null);
-  
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
+  // Charger un audit en attente au démarrage (si le navigateur a rafraîchi)
   useEffect(() => {
+    const pending = AuthService.getPendingAudit();
+    if (pending && currentUser) {
+       handleLinkPendingAudit(currentUser, pending);
+    }
+    
     if (currentUser && currentUser.role === 'admin') {
       AdminService.getNewLeadsCount().then(setNewLeadsCount).catch(() => {});
     }
-  }, [currentUser, appMode]);
+  }, [currentUser]);
 
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -73,10 +77,8 @@ export default function App() {
     const budgetHebdo = currentBudget / 4.34;
     const ventesActuellesHebdo = budgetHebdo / currentCpa;
     const ventesCiblesHebdo = budgetHebdo / targetCpa;
-    
     const creativeDiversityScore = (formats.length / 4) * 100;
     const andromedaOptimized = emq >= 8 && formats.length >= 2;
-
     const currentMonthlyRevenue = ventesActuellesHebdo * pmv * 4.34;
     const tresorerieLatenteHebdo = (currentMonthlyRevenue * 0.15) / 4.34;
 
@@ -111,12 +113,25 @@ export default function App() {
     const emq = parseFloat(currentInputs.emqScore) || 0;
     const roas = parseFloat(currentInputs.currentRoas) || 0;
     const latent = currentResults.tresorerieLatenteHebdo || 0;
-
     if (emq < 6) return 'SIGNAL AVEUGLE';
     if (latent > 500) return 'MARGE À RISQUE';
     if (emq >= 8 && roas > 3) return 'CHAMPION SCALING';
-    
     return 'POTENTIEL SOLIDE';
+  };
+
+  const handleLinkPendingAudit = async (user: UserProfile, pending: any) => {
+    setIsSaving(true);
+    try {
+      const verdict = calculateVerdict(pending.inputs, pending.results);
+      await AuditService.saveAudit(user, pending.inputs, pending.results, verdict);
+      AuthService.setPendingAudit(null); // On nettoie après succès
+      showNotification("Audit lié à votre compte ! 🚀");
+    } catch (e) {
+      console.error("Link Error:", e);
+    } finally {
+      setIsSaving(false);
+      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
+    }
   };
 
   const handleStartAnalysis = (e: React.FormEvent) => {
@@ -124,59 +139,36 @@ export default function App() {
     setAppMode('analyzing');
     setLoadingMessage("Audit Andromeda en cours...");
     setCurrentAuditId(null); 
-    setTimeout(async () => {
-        setAppMode('results');
-    }, 1500);
+    setTimeout(() => setAppMode('results'), 1500);
   };
 
   const handleSaveAuditLocally = async (projectName: string) => {
-    setIsSaving(true);
     const updatedInputs = { ...inputs, projectName };
-    
     if (!currentUser) {
-      setPendingAudit({ projectName, inputs: updatedInputs, results });
-      setTimeout(() => {
-        setIsSaving(false);
-        setShowSaveModal(false);
-        setShowAuthModal(true);
-      }, 600);
+      AuthService.setPendingAudit({ inputs: updatedInputs, results });
+      setShowSaveModal(false);
+      setShowAuthModal(true);
       return;
     }
     
+    setIsSaving(true);
     try {
       const verdict = calculateVerdict(updatedInputs, results);
       await AuditService.saveAudit(currentUser, updatedInputs, results, verdict);
       setIsSaving(false);
       setShowSaveModal(false);
-      showNotification("Audit enregistré avec succès !");
+      showNotification("Audit enregistré !");
       setAppMode('dashboard');
     } catch (e) {
       setIsSaving(false);
-      showNotification("Erreur lors de l'enregistrement", "error");
+      showNotification("Erreur de sauvegarde", "error");
     }
   };
 
-  const handleAuthenticated = async (user: UserProfile) => {
+  const handleAuthenticated = (user: UserProfile) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-    
-    if (pendingAudit) {
-      setIsSaving(true);
-      try {
-        const finalInputs = { ...pendingAudit.inputs, projectName: pendingAudit.projectName };
-        const verdict = calculateVerdict(finalInputs, pendingAudit.results);
-        await AuditService.saveAudit(user, finalInputs, pendingAudit.results, verdict);
-        setPendingAudit(null);
-        showNotification("Audit lié à votre nouveau compte ! 🚀");
-      } catch (e) {
-        console.error("Link error:", e);
-      } finally {
-        setIsSaving(false);
-        setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
-      }
-    } else {
-      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
-    }
+    // Si un audit en attente existe, le useEffect s'en chargera via la dépendance [currentUser]
   };
 
   const handleUpdateCurrentAudit = async () => {
@@ -190,9 +182,9 @@ export default function App() {
         verdictLabel: verdict,
         date: new Date().toISOString()
       });
-      showNotification("Modifications enregistrées !");
+      showNotification("Audit mis à jour !");
     } catch (e) {
-      showNotification("Erreur lors de la mise à jour", "error");
+      showNotification("Erreur de mise à jour", "error");
     } finally {
       setIsSaving(false);
     }
@@ -201,14 +193,7 @@ export default function App() {
   const renderContent = () => {
     if (appMode === 'home') return (
       <div className="flex-1 overflow-y-auto bg-white">
-        <LandingPage 
-          onStart={() => setAppMode('selection')} 
-          onBoutique={() => setAppMode('boutique')} 
-          onLogin={() => { setShowAuthModal(true); setPendingAudit(null); }} 
-          currentUser={currentUser} 
-          onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} 
-          newLeadsCount={newLeadsCount} 
-        />
+        <LandingPage onStart={() => setAppMode('selection')} onBoutique={() => setAppMode('boutique')} onLogin={() => setShowAuthModal(true)} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} newLeadsCount={newLeadsCount} />
       </div>
     );
 
@@ -218,9 +203,7 @@ export default function App() {
     if (appMode === 'boutique') return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         {renderNav()}
-        <main className="flex-1 overflow-y-auto scroll-smooth">
-          <Boutique onNotification={showNotification} />
-        </main>
+        <main className="flex-1 overflow-y-auto scroll-smooth"><Boutique onNotification={showNotification} /></main>
       </div>
     );
 

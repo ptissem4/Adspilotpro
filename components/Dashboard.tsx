@@ -21,13 +21,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
   const [activeTab, setActiveTab] = useState<'history' | 'guide' | 'boutique'>(defaultTab);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const loadHistory = async () => {
     setLoading(true);
-    AuditService.getAuditHistory(user.id).then(sims => {
+    try {
+      const sims = await AuditService.getAuditHistory(user.id);
       setHistory(sims);
+    } catch (e) {
+      console.error("Dashboard Load Error:", e);
+    } finally {
       setLoading(false);
-    });
-  }, [user.id, activeTab]);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, [user.id]);
 
   const latestSim = useMemo(() => history[0], [history]);
 
@@ -52,7 +60,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                   <button onClick={() => setActiveTab('boutique')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'boutique' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>💎 Boutique</button>
                </div>
              </div>
-             <button onClick={onLogout} className="text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border px-4 py-2 rounded-lg">Déconnexion</button>
+             <div className="flex items-center gap-3">
+               <button onClick={loadHistory} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-30">
+                  <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+               </button>
+               <button onClick={onLogout} className="text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border px-4 py-2 rounded-lg">Déconnexion</button>
+             </div>
          </div>
       </nav>
 
@@ -60,22 +73,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
         {activeTab === 'guide' ? <AuditExplainer onBack={() => setActiveTab('history')} inputs={latestSim?.inputs} results={latestSim?.results} /> : activeTab === 'boutique' ? <Boutique onNotification={onNotification} /> : (
           <div className="max-w-6xl mx-auto px-4 py-20 animate-fade-in">
              <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6">
-                 <div><h1 className="text-4xl font-black text-slate-900 uppercase italic leading-none mb-2">Espace Stratégique</h1><p className="text-slate-500 italic">Retrouvez vos rapports personnalisés.</p></div>
-                 <button onClick={onNewSimulation} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl">Nouvel Audit &rarr;</button>
+                 <div>
+                    <h1 className="text-4xl font-black text-slate-900 uppercase italic leading-none mb-2">Espace Stratégique</h1>
+                    <p className="text-slate-500 italic">{loading ? "Synchronisation en cours..." : "Retrouvez vos rapports personnalisés."}</p>
+                 </div>
+                 <button onClick={onNewSimulation} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95">Nouvel Audit &rarr;</button>
              </div>
-             {loading ? <div className="text-center py-20 font-black text-slate-400 animate-pulse uppercase tracking-[0.5em]">Chargement des données...</div> : history.length === 0 ? <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-200"><h3>Aucun audit enregistré</h3></div> : (
+             {loading && history.length === 0 ? (
+                 <div className="text-center py-20 font-black text-slate-400 animate-pulse uppercase tracking-[0.5em]">Chargement des données...</div>
+             ) : history.length === 0 ? (
+                 <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-200">
+                    <h3 className="text-xl font-black text-slate-900 uppercase mb-4">Aucun audit trouvé</h3>
+                    <p className="text-slate-500 mb-8 italic">Commencez par lancer un diagnostic Andromeda pour voir vos premiers rapports ici.</p>
+                    <button onClick={onNewSimulation} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Lancer l'audit maintenant</button>
+                 </div>
+             ) : (
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                      {history.map((sim) => (
                          <div key={sim.id} onClick={() => onLoadSimulation(sim)} className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl cursor-pointer group relative overflow-hidden transition-all">
                              <div className="flex justify-between items-start mb-8">
                                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Dossier #{sim.auditId}</span>
-                                 <button onClick={(e) => handleDelete(sim.id, e)} className="text-slate-300 hover:text-red-600 p-2">✕</button>
+                                 <button onClick={(e) => handleDelete(sim.id, e)} className="text-slate-300 hover:text-red-600 p-2 transition-colors">✕</button>
                              </div>
-                             <h3 className="font-black text-slate-900 text-2xl mb-1 uppercase tracking-tighter group-hover:text-indigo-600">{sim.name}</h3>
+                             <h3 className="font-black text-slate-900 text-2xl mb-1 uppercase tracking-tighter group-hover:text-indigo-600 truncate">{sim.name}</h3>
                              <p className="text-[10px] text-slate-400 font-bold mb-8 uppercase">{new Date(sim.date).toLocaleDateString()}</p>
                              <div className="space-y-3 border-t border-slate-100 pt-8 mt-auto">
-                                 <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400">ROAS</span><span className="font-black">{sim.inputs?.currentRoas || '0'}</span></div>
-                                 <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400">CPA</span><span className="font-black">{sim.inputs?.currentCpa || '0'}€</span></div>
+                                 <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">ROAS</span><span className="font-black">{sim.inputs?.currentRoas || '0'}</span></div>
+                                 <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">CPA</span><span className="font-black">{sim.inputs?.currentCpa || '0'}€</span></div>
                              </div>
                          </div>
                      ))}
