@@ -204,9 +204,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                           <table className="min-w-full divide-y divide-slate-100 table-fixed">
                               <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                   <tr>
-                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Nom & Email</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Type Client</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Audit Score</th>
+                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-64">Identité & Projet</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Statut Client</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Andromeda Triage</th>
                                       <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit</th>
                                   </tr>
                               </thead>
@@ -217,25 +217,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                     return (
                                       <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
                                           <td className="px-6 py-4">
-                                              <div className="flex flex-col">
-                                                <div className="flex items-center gap-2">
-                                                   <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
-                                                      {lead.user.firstName || "Inconnu"}
-                                                   </span>
-                                                   {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
-                                                </div>
-                                                <span className="text-[10px] text-slate-400 font-bold lowercase">{lead.user.email}</span>
-                                                <div className="mt-1 flex items-center gap-1.5">
-                                                   <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded border border-indigo-100 font-black uppercase">
-                                                      {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit"}
-                                                   </span>
+                                              <div className="flex items-center gap-4">
+                                                {lead.user.email === 'shopiflight@gmail.com' ? (
+                                                  <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover shrink-0 border border-slate-200 shadow-sm" alt="Alexia" />
+                                                ) : (
+                                                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
+                                                    {lead.user.firstName?.charAt(0) || "P"}
+                                                  </div>
+                                                )}
+                                                <div className="flex flex-col min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                     <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
+                                                        {lead.user.firstName || "Prospect Inconnu"}
+                                                     </span>
+                                                     {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
+                                                  </div>
+                                                  <span className="text-[9px] text-indigo-600 font-bold uppercase italic truncate">
+                                                    {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit Lancé"}
+                                                  </span>
+                                                  <span className="text-[9px] text-slate-400 font-medium lowercase truncate mt-0.5 opacity-60">{lead.user.email}</span>
                                                 </div>
                                               </div>
                                           </td>
                                           <td className="px-4 py-4 text-center">
                                               <div className="flex flex-col items-center gap-1">
-                                                 {isConsulting && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Premium</span>}
-                                                 {isBuyer && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Acheteur</span>}
+                                                 {isConsulting && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest shadow-sm">Premium</span>}
+                                                 {isBuyer && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest shadow-sm">Acheteur</span>}
                                                  {!isConsulting && !isBuyer && <span className="text-[7px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Prospect</span>}
                                               </div>
                                           </td>
@@ -280,11 +287,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    <div className="relative z-10 flex justify-between items-start">
                                       <div className="space-y-1">
                                          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ DÉTECTÉE</p>
-                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || "Inconnu"}</h2>
+                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || "Prospect Inconnu"}</h2>
                                          <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                          <p className="text-[10px] text-slate-500 font-medium italic">Inscrit le {new Date(selectedLead.user.createdAt).toLocaleDateString()} à {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                       </div>
-                                      <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value as any)} className="bg-white/10 border border-white/20 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white outline-none cursor-pointer">
+                                      <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value as any)} className="bg-white/10 border border-white/20 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white outline-none cursor-pointer shadow-inner">
                                            <option value="new" className="text-slate-900">🔴 Nouveau</option>
                                            <option value="contacted" className="text-slate-900">🟠 En Cours</option>
                                            <option value="closed" className="text-slate-900">🟢 Terminé</option>
@@ -303,20 +310,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
                                 {/* FINANCES & PRODUITS */}
                                 <div className="grid grid-cols-2 gap-4">
-                                   <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between">
+                                   <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between shadow-sm">
                                       <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Valeur Consulting</h4>
                                       <div className="space-y-4">
                                          <div className="flex items-center gap-2">
                                             <input type="number" value={consultingInput} onChange={(e) => setConsultingInput(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 ring-indigo-500/20 outline-none" placeholder="0 €" />
                                             <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100">OK</button>
                                          </div>
-                                         <div className="bg-white p-3 rounded-xl border border-slate-100">
+                                         <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-inner">
                                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Encaissé</p>
                                             <p className="text-xl font-black text-slate-900">{formatCurrency(selectedLead.user.consultingValue || 0)}</p>
                                          </div>
                                       </div>
                                    </div>
-                                   <div className="bg-indigo-50 p-6 rounded-[2.5rem] border border-indigo-100 flex flex-col">
+                                   <div className="bg-indigo-50 p-6 rounded-[2.5rem] border border-indigo-100 flex flex-col shadow-sm">
                                       <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Bibliothèque Clients</h4>
                                       <div className="flex-1 space-y-3">
                                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Produits actifs :</p>
@@ -326,7 +333,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                                 <span key={p} className="bg-white px-2.5 py-1 rounded-lg text-[8px] font-black uppercase border border-indigo-100 text-indigo-600 shadow-sm">{p}</span>
                                               ))
                                             ) : (
-                                              <p className="text-[9px] text-slate-400 italic font-medium leading-relaxed">Aucun guide acheté sur la boutique.</p>
+                                              <p className="text-[9px] text-slate-400 italic font-medium leading-relaxed">Aucun guide acheté.</p>
                                             )}
                                          </div>
                                       </div>
@@ -363,7 +370,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                              Voir Rapport &rarr;
                                           </button>
                                        </div>
-                                       <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-[2rem]">
+                                       <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-[2rem] shadow-inner">
                                           <h3 className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-3">Argumentaire Closing Andromeda</h3>
                                           <p className="text-[11px] text-indigo-900 font-medium italic leading-relaxed">"{closingPitch.text}"</p>
                                        </div>
@@ -378,7 +385,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                       <span className="h-px flex-1 bg-slate-100"></span>
                                    </div>
                                    <textarea 
-                                     className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300" 
+                                     className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300 shadow-inner" 
                                      placeholder="Quelles sont les prochaines étapes pour ce client ? (Note privée)" 
                                      value={expertNote} 
                                      onChange={(e) => setExpertNote(e.target.value)} 

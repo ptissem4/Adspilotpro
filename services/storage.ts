@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        full_name: data.user.user_metadata?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+        full_name: data.user.user_metadata?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -263,20 +263,17 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      console.log("🚀 AdminService: Démarrage synchronisation complète...");
+      console.log("🚀 AdminService: Synchronisation CRM...");
       
-      // 1. Récupération des profils (avec full_name)
       const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
       if (pError) console.error("❌ Erreur Profiles:", pError.message);
 
-      // 2. Récupération des audits
       const { data: audits, error: aError } = await supabase.from('audits').select('*');
       if (aError) console.error("❌ Erreur Audits:", aError.message);
 
       const allProfiles = profiles || [];
       const allAudits = audits || [];
 
-      // 3. Fusion intelligente
       const allUserIds = new Set([
         ...allProfiles.map(p => p.id),
         ...allAudits.map(a => a.user_id)
@@ -287,7 +284,6 @@ export const AdminService = {
         const userAudits = allAudits.filter(a => a.user_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
-        // On construit l'utilisateur avec une priorité sur les données réelles
         const userObj: UserProfile = {
           id: userId,
           email: profile?.email || (lastAudit?.inputs?.email) || "Email non trouvé",
