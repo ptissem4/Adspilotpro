@@ -121,7 +121,6 @@ export const AuthService = {
     try { return JSON.parse(data); } catch (e) { return null; }
   },
 
-  // Gestion de l'audit en attente (survit au refresh)
   setPendingAudit: (audit: any) => {
     if (audit) localStorage.setItem(STORAGE_KEYS.PENDING_AUDIT, JSON.stringify(audit));
     else localStorage.removeItem(STORAGE_KEYS.PENDING_AUDIT);
@@ -132,7 +131,6 @@ export const AuthService = {
     return data ? JSON.parse(data) : null;
   },
 
-  // Fix error: Add missing recordPurchase method to AuthService
   recordPurchase: async (email: string, product: string) => {
     if (!configDiagnostic.hasUrl) return;
     try {
@@ -143,7 +141,6 @@ export const AuthService = {
         const updated = [...existing, product];
         await supabase.from('profiles').update({ purchased_products: updated }).eq('email', cleanEmail);
         
-        // Synchronisation du cache local
         const currentUser = AuthService.getCurrentUser();
         if (currentUser && currentUser.email.toLowerCase() === cleanEmail) {
           currentUser.purchasedProducts = updated;
@@ -188,7 +185,6 @@ export const AuditService = {
       verdictLabel
     };
 
-    // Mise à jour immédiate du cache local pour un affichage instantané
     const allLocal = JSON.parse(localStorage.getItem(STORAGE_KEYS.AUDITS_LOCAL) || '[]');
     const updatedLocal = [historyItem, ...allLocal.filter((i: any) => i.id !== historyItem.id)];
     localStorage.setItem(STORAGE_KEYS.AUDITS_LOCAL, JSON.stringify(updatedLocal));
@@ -220,7 +216,6 @@ export const AuditService = {
         verdictLabel: s.verdict_label
       }));
 
-      // Fusion intelligente : Serveur prioritaire, mais on garde les locaux non encore synchronisés
       const merged = [...serverData];
       userLocal.forEach((local: any) => {
           if (!merged.find(m => m.id === local.id)) merged.push(local);
@@ -256,14 +251,15 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      const { data: profiles } = await supabase.from('profiles').select('*');
+      const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
       const { data: audits } = await supabase.from('audits').select('*').order('created_at', { ascending: false });
+      
       if (!profiles) return [];
 
       return profiles.map(profile => {
         const userAudits = (audits || []).filter(a => a.user_id === profile.id);
-        if (userAudits.length === 0) return null;
-        const lastAudit = userAudits[0];
+        const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
+
         return {
           user: {
             id: profile.id,
@@ -274,7 +270,7 @@ export const AdminService = {
             consultingValue: profile.consulting_value,
             purchasedProducts: profile.purchased_products || []
           },
-          lastSimulation: {
+          lastSimulation: lastAudit ? {
             id: lastAudit.id,
             auditId: lastAudit.id.toString().split('-')[0].toUpperCase(),
             userId: lastAudit.user_id,
@@ -283,10 +279,10 @@ export const AdminService = {
             inputs: lastAudit.inputs,
             results: lastAudit.results,
             verdictLabel: lastAudit.verdict_label
-          },
+          } : null, // On garde null si aucun audit
           status: (profile.status as any) || 'new'
         };
-      }).filter(Boolean) as LeadData[];
+      });
     } catch (e) { return []; }
   },
   

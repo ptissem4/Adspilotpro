@@ -1,5 +1,4 @@
 
-
 export interface CalculatorInputs {
   pmv: string;
   margin: string;
@@ -89,6 +88,6 @@ export interface SimulationHistory {
 
 export interface LeadData {
   user: UserProfile;
-  lastSimulation: SimulationHistory;
+  lastSimulation: SimulationHistory | null; // Changé en optionnel
   status: 'new' | 'contacted' | 'closed';
 }
