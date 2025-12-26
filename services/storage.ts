@@ -52,15 +52,27 @@ export const AuthService = {
     if (authError) throw authError;
     if (!data.user) throw new Error("Utilisateur introuvable.");
 
+    // RECUPERATION ET MISE A JOUR DU PROFIL (Auto-réparation si manquant)
+    const isExplicitAdmin = data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const role = isExplicitAdmin ? 'admin' : 'user';
+
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
 
-    const isExplicitAdmin = data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    const role = isExplicitAdmin ? 'admin' : (profile?.role || 'user');
+    // Si le profil n'existe pas dans la table publique, on le crée
+    if (!profile) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        email: data.user.email?.toLowerCase(),
+        first_name: data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+        role: role,
+        status: 'new'
+      });
+    }
 
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+      firstName: profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -86,6 +98,7 @@ export const AuthService = {
     const isExplicitAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const role = isExplicitAdmin ? 'admin' : 'user';
 
+    // Création immédiate du profil
     try {
       await supabase.from('profiles').upsert({
         id: data.user.id,
@@ -94,7 +107,9 @@ export const AuthService = {
         role: role,
         status: 'new'
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error("Erreur creation profil:", e);
+    }
 
     const user: UserProfile = {
       id: data.user.id,
@@ -251,8 +266,19 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-      const { data: audits } = await supabase.from('audits').select('*').order('created_at', { ascending: false });
+      // DEBUG LOGS
+      console.log("Admin: Tentative de récupération des profils...");
+      
+      const { data: profiles, error: pError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      if (pError) {
+        console.error("ERREUR SUPABASE PROFILES:", pError.message, pError.details);
+        return [];
+      }
+
+      console.log(`Admin: ${profiles?.length || 0} profils trouvés.`);
+
+      const { data: audits, error: aError } = await supabase.from('audits').select('*').order('created_at', { ascending: false });
+      if (aError) console.error("ERREUR SUPABASE AUDITS:", aError.message);
       
       if (!profiles) return [];
 
@@ -279,11 +305,14 @@ export const AdminService = {
             inputs: lastAudit.inputs,
             results: lastAudit.results,
             verdictLabel: lastAudit.verdict_label
-          } : null, // On garde null si aucun audit
+          } : null,
           status: (profile.status as any) || 'new'
         };
       });
-    } catch (e) { return []; }
+    } catch (e) { 
+      console.error("Admin: Exception fatale lors du fetch leads:", e);
+      return []; 
+    }
   },
   
   updateLeadStatus: async (userId: string, status: string) => { await supabase.from('profiles').update({ status }).eq('id', userId); },
