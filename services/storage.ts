@@ -52,13 +52,11 @@ export const AuthService = {
     if (authError) throw authError;
     if (!data.user) throw new Error("Utilisateur introuvable.");
 
-    // RECUPERATION ET MISE A JOUR DU PROFIL (Auto-réparation si manquant)
     const isExplicitAdmin = data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const role = isExplicitAdmin ? 'admin' : 'user';
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
 
-    // Si le profil n'existe pas dans la table publique, on le crée
     if (!profile) {
       await supabase.from('profiles').upsert({
         id: data.user.id,
@@ -98,7 +96,6 @@ export const AuthService = {
     const isExplicitAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const role = isExplicitAdmin ? 'admin' : 'user';
 
-    // Création immédiate du profil
     try {
       await supabase.from('profiles').upsert({
         id: data.user.id,
@@ -266,36 +263,43 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // DEBUG LOGS
-      console.log("Admin: Tentative de récupération des profils...");
+      console.log("🚀 AdminService: Démarrage synchronisation complète...");
       
-      const { data: profiles, error: pError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-      if (pError) {
-        console.error("ERREUR SUPABASE PROFILES:", pError.message, pError.details);
-        return [];
-      }
+      // 1. On récupère tout ce qu'on peut depuis profiles
+      const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
+      if (pError) console.error("❌ Erreur Profiles:", pError.message);
 
-      console.log(`Admin: ${profiles?.length || 0} profils trouvés.`);
+      // 2. On récupère TOUS les audits (souvent plus fiable si RLS mal réglé sur profiles)
+      const { data: audits, error: aError } = await supabase.from('audits').select('*');
+      if (aError) console.error("❌ Erreur Audits:", aError.message);
 
-      const { data: audits, error: aError } = await supabase.from('audits').select('*').order('created_at', { ascending: false });
-      if (aError) console.error("ERREUR SUPABASE AUDITS:", aError.message);
-      
-      if (!profiles) return [];
+      const allProfiles = profiles || [];
+      const allAudits = audits || [];
 
-      return profiles.map(profile => {
-        const userAudits = (audits || []).filter(a => a.user_id === profile.id);
+      // 3. On crée une liste d'IDs uniques à partir des deux sources
+      const allUserIds = new Set([
+        ...allProfiles.map(p => p.id),
+        ...allAudits.map(a => a.user_id)
+      ]);
+
+      const leads: LeadData[] = Array.from(allUserIds).map(userId => {
+        const profile = allProfiles.find(p => p.id === userId);
+        const userAudits = allAudits.filter(a => a.user_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
+        // Si le profil est manquant, on crée un objet utilisateur "fantôme" basé sur l'audit
+        const userObj: UserProfile = {
+          id: userId,
+          email: profile?.email || (lastAudit?.inputs?.email) || "Email non trouvé",
+          firstName: profile?.first_name || (lastAudit?.inputs?.projectName?.split(' ')[0]) || "Inconnu",
+          role: (profile?.role as any) || 'user',
+          createdAt: profile?.created_at || lastAudit?.created_at || new Date().toISOString(),
+          consultingValue: profile?.consulting_value || 0,
+          purchasedProducts: profile?.purchased_products || []
+        };
+
         return {
-          user: {
-            id: profile.id,
-            email: profile.email,
-            firstName: profile.first_name,
-            role: profile.role,
-            createdAt: profile.created_at,
-            consultingValue: profile.consulting_value,
-            purchasedProducts: profile.purchased_products || []
-          },
+          user: userObj,
           lastSimulation: lastAudit ? {
             id: lastAudit.id,
             auditId: lastAudit.id.toString().split('-')[0].toUpperCase(),
@@ -306,11 +310,14 @@ export const AdminService = {
             results: lastAudit.results,
             verdictLabel: lastAudit.verdict_label
           } : null,
-          status: (profile.status as any) || 'new'
+          status: (profile?.status as any) || 'new'
         };
       });
+
+      // Tri final par date (les plus récents en haut)
+      return leads.sort((a, b) => new Date(b.user.createdAt).getTime() - new Date(a.user.createdAt).getTime());
     } catch (e) { 
-      console.error("Admin: Exception fatale lors du fetch leads:", e);
+      console.error("💥 Erreur fatale AdminService:", e);
       return []; 
     }
   },

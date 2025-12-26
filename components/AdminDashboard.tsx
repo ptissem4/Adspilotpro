@@ -22,11 +22,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   const [expertNote, setExpertNote] = useState('');
   const [consultingInput, setConsultingInput] = useState<string>('0');
   const [editingGuide, setEditingGuide] = useState<Guide | null>(null);
-  const [showFullReport, setShowFullReport] = useState(false);
 
   const loadLeads = async () => {
     setLoading(true);
     const data = await AdminService.getGlobalLeads();
+    console.log("Dashboard: Données reçues:", data.length, "leads.");
     setLeads(data);
     setLoading(false);
   };
@@ -36,27 +36,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     setGuides(AdminService.getGuides());
   }, []);
 
-  const parsePrice = (priceStr: string) => {
-    return parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
-  };
-
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(isNaN(val) ? 0 : val);
-
-  const stats = useMemo(() => {
-    let guideTotal = 0;
-    let consultingTotal = 0;
-    leads.forEach(lead => {
-      if (lead.user.purchasedProducts) {
-        lead.user.purchasedProducts.forEach(productName => {
-          const guide = guides.find(g => g.title === productName || g.id === productName);
-          guideTotal += guide ? parsePrice(guide.price) : 47;
-        });
-      }
-      consultingTotal += lead.user.consultingValue || 0;
-    });
-    return { auto: guideTotal, consulting: consultingTotal, total: guideTotal + consultingTotal };
-  }, [leads, guides]);
 
   const closingPitch = useMemo(() => {
     if (!selectedLead || !selectedLead.lastSimulation) return { title: 'Prospect Froid', text: 'Aucune donnée disponible. Attendez que le client lance son premier audit Andromeda.' };
@@ -177,6 +158,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                     <button onClick={loadLeads} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
                       <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
                     </button>
+                    <div className="hidden sm:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{leads.length} Comptes Détectés</span>
+                    </div>
                   </div>
                   <div className="relative w-80">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
@@ -213,7 +198,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                               <span className={`text-[10px] font-black tracking-tight uppercase truncate ${!lead.lastSimulation ? 'text-indigo-400' : 'text-slate-900'}`}>
-                                                 {lead.lastSimulation ? lead.lastSimulation.name : "🆕 Profil Synchronisé (Sans audit)"}
+                                                 {lead.lastSimulation ? lead.lastSimulation.name : (lead.user.email === adminUser.email ? "👑 ADMIN (MOI)" : "🆕 NOUVEL INSCRIT")}
                                               </span>
                                               <span className="text-[9px] text-slate-400 font-bold lowercase">{lead.user.email}</span>
                                             </div>
@@ -241,10 +226,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                   <div className="w-[500px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col">
                       {selectedLead ? (
                         <div className="p-8 space-y-8 animate-fade-in flex-1">
-                            {/* ... (Détails du lead identiques à avant) ... */}
                             <div className="border-b border-slate-100 pb-6 flex justify-between items-start">
                                <div className="max-w-[70%]">
-                                  <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-1">PROFIL INSCRIT</h2>
+                                  <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-1">PROFIL DÉTECTÉ</h2>
                                   <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 truncate leading-tight">
                                     {selectedLead.user.firstName || "Inconnu"}
                                   </h2>
@@ -260,7 +244,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                             {!selectedLead.lastSimulation ? (
                               <div className="bg-slate-50 rounded-[2rem] p-10 text-center border border-dashed border-slate-200">
                                 <span className="text-4xl block mb-4">🧊</span>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Lead en attente</p>
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Lead à travailler</p>
                                 <p className="text-[10px] text-slate-400 italic">Cet utilisateur s'est inscrit mais n'a pas encore lancé de diagnostic Andromeda.</p>
                               </div>
                             ) : (
@@ -275,8 +259,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                         <p className="text-3xl font-black text-white">{selectedLead.lastSimulation.inputs.emqScore}/10</p>
                                     </div>
                                 </div>
+                                <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-[2rem] space-y-4">
+                                   <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Argumentaire Closing</h3>
+                                   <div className="bg-white/50 p-4 rounded-xl text-xs text-slate-600 font-medium italic">"{closingPitch.text}"</div>
+                                </div>
                               </>
                             )}
+
+                            <div className="space-y-4">
+                               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes Internes / Client</h3>
+                               <textarea 
+                                 className="w-full h-32 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-medium focus:ring-2 ring-indigo-500 outline-none" 
+                                 placeholder="Note stratégique..." 
+                                 value={expertNote} 
+                                 onChange={(e) => setExpertNote(e.target.value)} 
+                               />
+                               <button 
+                                 onClick={handleSaveNote} 
+                                 className="w-full bg-slate-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                               >
+                                 Enregistrer Note &rarr;
+                               </button>
+                            </div>
                         </div>
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30">
