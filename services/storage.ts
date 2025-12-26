@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
+        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Alexia' : data.user.email),
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
+      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.full_name || data.user.email || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -285,7 +285,7 @@ export const AdminService = {
         const userObj: UserProfile = {
           id: profile.id,
           email: profile.email || "Email masqué",
-          firstName: profile.full_name || profile.first_name || "Nouveau Prospect",
+          firstName: profile.full_name || profile.email || "Utilisateur Anonyme",
           role: profile.role || 'user',
           createdAt: profile.created_at,
           consultingValue: profile.consulting_value || 0,
@@ -315,7 +315,7 @@ export const AdminService = {
            user: {
              id: audit.user_id,
              email: audit.inputs?.email || "Audit Orphelin",
-             firstName: audit.inputs?.projectName?.split(' ')[0] || "Audit Anonyme",
+             firstName: audit.inputs?.email || "Utilisateur sans Profil",
              role: 'user',
              createdAt: audit.created_at,
              consultingValue: 0,

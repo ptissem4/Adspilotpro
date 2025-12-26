@@ -228,7 +228,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                                 <div className="flex flex-col min-w-0">
                                                   <div className="flex items-center gap-2">
                                                      <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
-                                                        {lead.user.firstName || "Prospect Inconnu"}
+                                                        {lead.user.firstName || lead.user.email}
                                                      </span>
                                                      {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
                                                   </div>
@@ -287,7 +287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    <div className="relative z-10 flex justify-between items-start">
                                       <div className="space-y-1">
                                          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ DÉTECTÉE</p>
-                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || "Prospect Inconnu"}</h2>
+                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || selectedLead.user.email}</h2>
                                          <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                          <p className="text-[10px] text-slate-500 font-medium italic">Inscrit le {new Date(selectedLead.user.createdAt).toLocaleDateString()} à {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                       </div>
