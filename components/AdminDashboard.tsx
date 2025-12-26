@@ -29,6 +29,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     setLoading(true);
     try {
       const data = await AdminService.getGlobalLeads();
+      console.log("📊 Leads loaded:", data);
       setLeads(data);
     } catch (e) {
       console.error("Erreur chargement leads:", e);
@@ -48,7 +49,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'audits' }, 
         (payload) => {
-          console.log("⚡ [REALTIME] Audit Table Change:", payload.eventType);
           loadLeads();
           if (payload.eventType === 'INSERT') {
             const newAudit = payload.new;
@@ -65,7 +65,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'profiles' }, 
         (payload) => {
-          console.log("⚡ [REALTIME] Profile Table Change:", payload.eventType);
           loadLeads();
         }
       )
@@ -107,17 +106,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     };
   }, [selectedLead]);
 
-  const filteredLeads = leads.filter(lead => {
-    const term = searchTerm.toLowerCase();
-    const nameMatch = (lead.user.firstName || "").toLowerCase().includes(term);
-    const projMatch = lead.lastSimulation ? lead.lastSimulation.name.toLowerCase().includes(term) : false;
-    const emailMatch = (lead.user.email || "").toLowerCase().includes(term);
-    const matchesSearch = emailMatch || nameMatch || projMatch;
-    
-    if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
-    if (filterType === 'premium') return matchesSearch && (lead.user.consultingValue || 0) > 0;
-    return matchesSearch;
-  });
+  // SUPPRESSION DES FILTRES POUR DEBUG
+  const filteredLeads = leads; 
 
   const getStatusDot = (type: 'signal' | 'ltv' | 'scaling', lead: LeadData) => {
     if (!lead.lastSimulation) return <div className="w-2 h-2 rounded-full bg-slate-100" title="Pas de données" />;
@@ -223,30 +213,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                     <button onClick={loadLeads} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
                       <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
                     </button>
-                    <div className="flex gap-2">
-                        <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Tous</button>
-                        <button onClick={() => setFilterType('buyers')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'buyers' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Acheteurs</button>
-                        <button onClick={() => setFilterType('premium')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'premium' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Consulting</button>
-                    </div>
-                  </div>
-                  <div className="relative w-80">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                    <input type="text" placeholder="Nom, email ou projet..." className="w-full bg-slate-50 border border-slate-200 py-2.5 pl-10 pr-4 rounded-xl text-xs font-medium outline-none transition-all focus:ring-2 ring-indigo-500/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
               </header>
 
               <div className="flex-1 flex overflow-hidden">
                   <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                      
+                      {/* DEBUG VISUEL - À SUPPRIMER APRÈS VÉRIFICATION */}
+                      <div className="mb-6 p-4 bg-slate-900 rounded-xl overflow-hidden shadow-xl border border-indigo-500/30">
+                         <p className="text-[10px] text-indigo-400 font-black uppercase mb-2">Debug Data Raw ({leads.length} leads)</p>
+                         <pre className="text-[10px] text-slate-300 font-mono scrollbar-hide max-h-40 overflow-y-auto">
+                            {JSON.stringify(leads.map(l => ({ id: l.user.id, name: l.user.full_name, email: l.user.email })), null, 2)}
+                         </pre>
+                      </div>
+
                       {loading && leads.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
                           <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                           <p className="text-[10px] font-black uppercase tracking-widest">Initialisation...</p>
                         </div>
-                      ) : filteredLeads.length === 0 ? (
+                      ) : leads.length === 0 ? (
                         <div className="bg-white rounded-[2rem] p-20 text-center border border-slate-200 shadow-sm">
                            <p className="text-4xl mb-4">🏜️</p>
                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Aucun prospect trouvé</h3>
-                           <p className="text-xs text-slate-400 italic">Vérifiez vos filtres ou invitez de nouveaux utilisateurs.</p>
+                           <p className="text-xs text-slate-400 italic">La base de données semble vide ou inaccessible.</p>
                         </div>
                       ) : (
                         <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
@@ -263,25 +253,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                   {filteredLeads.map((lead) => {
                                     const isBuyer = (lead.user.purchasedProducts?.length || 0) > 0;
                                     const isConsulting = (lead.user.consultingValue || 0) > 0;
-                                    const displayName = lead.user.firstName || lead.user.email;
+                                    const displayName = lead.user.full_name || lead.user.email;
                                     
                                     return (
                                       <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
                                           <td className="px-6 py-4">
                                               <div className="flex items-center gap-4">
-                                                {lead.user.email === 'shopiflight@gmail.com' ? (
-                                                  <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover shrink-0 border border-slate-200 shadow-sm" alt="Alexia" />
-                                                ) : (
-                                                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
-                                                    {(displayName || "P").charAt(0).toUpperCase()}
-                                                  </div>
-                                                )}
+                                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
+                                                  {(displayName || "P").charAt(0).toUpperCase()}
+                                                </div>
                                                 <div className="flex flex-col min-w-0">
                                                   <div className="flex items-center gap-2">
                                                      <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
                                                         {displayName}
                                                      </span>
-                                                     {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
                                                   </div>
                                                   <span className="text-[9px] text-indigo-600 font-bold uppercase italic truncate">
                                                     {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit Lancé"}
@@ -338,7 +323,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    <div className="relative z-10 flex justify-between items-start">
                                       <div className="space-y-1">
                                          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ DÉTECTÉE</p>
-                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || selectedLead.user.email}</h2>
+                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.full_name || selectedLead.user.email}</h2>
                                          <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                          <p className="text-[10px] text-slate-500 font-medium italic">Inscrit le {new Date(selectedLead.user.createdAt).toLocaleDateString()} à {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                       </div>
@@ -347,15 +332,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                            <option value="contacted" className="text-slate-900">🟠 En Cours</option>
                                            <option value="closed" className="text-slate-900">🟢 Terminé</option>
                                       </select>
-                                   </div>
-                                   
-                                   <div className="mt-8 flex gap-3">
-                                      {(selectedLead.user.consultingValue || 0) > 0 && (
-                                        <span className="bg-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">💎 Premium Consulting</span>
-                                      )}
-                                      {(selectedLead.user.purchasedProducts?.length || 0) > 0 && (
-                                        <span className="bg-emerald-500 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">🛒 Acheteur Digital</span>
-                                      )}
                                    </div>
                                 </div>
 

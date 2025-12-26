@@ -54,13 +54,13 @@ export interface CalculationResults {
 export interface UserProfile {
   id: string;
   email: string;
-  firstName?: string;
+  full_name?: string; // Correspondance exacte Supabase
+  firstName?: string; // Fallback pour compatibilité
   name?: string;
   role: 'user' | 'admin';
   createdAt: string;
   purchasedProducts?: string[]; 
   consultingValue?: number;
-  // Added isLocal to track offline demo sessions
   isLocal?: boolean;
 }
 
@@ -88,6 +88,6 @@ export interface SimulationHistory {
 
 export interface LeadData {
   user: UserProfile;
-  lastSimulation: SimulationHistory | null; // Changé en optionnel
+  lastSimulation: SimulationHistory | null;
   status: 'new' | 'contacted' | 'closed';
 }

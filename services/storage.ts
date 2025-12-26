@@ -70,6 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
+      full_name: profile?.full_name || data.user.user_metadata?.full_name || data.user.email!,
       firstName: profile?.full_name || data.user.user_metadata?.full_name || data.user.email!,
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
@@ -115,7 +116,8 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName,
+      full_name: firstName,
+      firstName: firstName,
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: 0,
@@ -267,16 +269,19 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // On fetch d'abord tous les profils (LEFT JOIN implicite sur audits)
+      // On utilise profiles comme table parente pour avoir tous les profils (même sans audit)
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*, audits(*)')
+        .select(`
+          *,
+          audits(*)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       return (profiles || []).map(p => {
-        // Source de vérité : profiles.full_name
+        // full_name direct de la table profiles
         const identityName = p.full_name || p.email;
 
         const userAudits = (p.audits || []).sort((a: any, b: any) => 
@@ -289,7 +294,8 @@ export const AdminService = {
           user: {
             id: p.id,
             email: p.email || "Email masqué",
-            firstName: identityName, // On injecte le nom complet ici
+            full_name: identityName, // Utilise la colonne full_name
+            firstName: identityName, 
             role: p.role || 'user',
             createdAt: p.created_at,
             consultingValue: p.consulting_value || 0,
