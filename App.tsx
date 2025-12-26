@@ -32,6 +32,7 @@ export default function App() {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [currentAuditId, setCurrentAuditId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [authIntent, setAuthIntent] = useState<'dashboard' | 'audit'>('dashboard');
 
   const [inputs, setInputs] = useState<CalculatorInputs>({
     pmv: '', margin: '', targetRoas: '', targetVolume: '', currentCpa: '',
@@ -44,11 +45,6 @@ export default function App() {
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
-    const pending = AuthService.getPendingAudit();
-    if (pending && currentUser) {
-       handleLinkPendingAudit(currentUser, pending);
-    }
-    
     if (currentUser && currentUser.role === 'admin') {
       AdminService.getNewLeadsCount().then(setNewLeadsCount).catch(() => {});
     }
@@ -118,21 +114,6 @@ export default function App() {
     return 'POTENTIEL SOLIDE';
   };
 
-  const handleLinkPendingAudit = async (user: UserProfile, pending: any) => {
-    setIsSaving(true);
-    try {
-      const verdict = calculateVerdict(pending.inputs, pending.results);
-      await AuditService.saveAudit(user, pending.inputs, pending.results, verdict);
-      AuthService.setPendingAudit(null);
-      showNotification("Audit Andromeda synchronisé avec succès ! 🚀");
-    } catch (e) {
-      console.error("Link Error:", e);
-    } finally {
-      setIsSaving(false);
-      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
-    }
-  };
-
   const handleStartAnalysis = (e: React.FormEvent) => {
     e.preventDefault();
     setAppMode('analyzing');
@@ -142,14 +123,13 @@ export default function App() {
   };
 
   const handleSaveAuditLocally = async (projectName: string) => {
-    const updatedInputs = { ...inputs, projectName };
     if (!currentUser) {
-      AuthService.setPendingAudit({ inputs: updatedInputs, results });
-      setShowSaveModal(false);
-      setShowAuthModal(true);
+      showNotification("Session expirée. Veuillez vous reconnecter.", "error");
+      setAppMode('home');
       return;
     }
-    
+
+    const updatedInputs = { ...inputs, projectName };
     setIsSaving(true);
     try {
       const verdict = calculateVerdict(updatedInputs, results);
@@ -167,6 +147,11 @@ export default function App() {
   const handleAuthenticated = (user: UserProfile) => {
     setCurrentUser(user);
     setShowAuthModal(false);
+    if (authIntent === 'audit') {
+      setAppMode('selection');
+    } else {
+      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
+    }
   };
 
   const handleUpdateCurrentAudit = async () => {
@@ -188,10 +173,19 @@ export default function App() {
     }
   };
 
+  const handleStartIntent = () => {
+    if (currentUser) {
+      setAppMode('selection');
+    } else {
+      setAuthIntent('audit');
+      setShowAuthModal(true);
+    }
+  };
+
   const renderContent = () => {
     if (appMode === 'home') return (
       <div className="flex-1 overflow-y-auto bg-white">
-        <LandingPage onStart={() => setAppMode('selection')} onBoutique={() => setAppMode('boutique')} onLogin={() => setShowAuthModal(true)} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} newLeadsCount={newLeadsCount} />
+        <LandingPage onStart={handleStartIntent} onBoutique={() => setAppMode('boutique')} onLogin={() => { setAuthIntent('dashboard'); setShowAuthModal(true); }} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} newLeadsCount={newLeadsCount} />
       </div>
     );
 
@@ -204,6 +198,14 @@ export default function App() {
         <main className="flex-1 overflow-y-auto scroll-smooth"><Boutique onNotification={showNotification} /></main>
       </div>
     );
+
+    // If unauthenticated trying to access calculator, redirect to auth
+    if (!currentUser && (appMode === 'selection' || appMode === 'calculator' || appMode === 'results')) {
+      setAuthIntent('audit');
+      setShowAuthModal(true);
+      setAppMode('home');
+      return null;
+    }
 
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -241,7 +243,7 @@ export default function App() {
             {currentUser.role === 'admin' ? '👑 Admin' : '👤 Espace Client'}
           </button>
         ) : (
-          <button onClick={() => setShowAuthModal(true)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Connexion</button>
+          <button onClick={() => { setAuthIntent('dashboard'); setShowAuthModal(true); }} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Connexion</button>
         )}
       </div>
     </nav>
@@ -250,7 +252,7 @@ export default function App() {
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden relative">
       {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[1000] px-8 py-5 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-2xl bg-slate-900 text-white border border-slate-700 animate-fade-in">{toast.msg}</div>}
-      {showAuthModal && <AuthGate onAuthenticated={handleAuthenticated} onCancel={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthGate onAuthenticated={handleAuthenticated} onCancel={() => setShowAuthModal(false)} defaultView={authIntent === 'audit' ? 'signup' : 'login'} />}
       {showSaveModal && <SaveAuditModal initialName={inputs.projectName} loading={isSaving} isGuest={!currentUser} onCancel={() => setShowSaveModal(false)} onSave={handleSaveAuditLocally} />}
       {renderContent()}
     </div>
