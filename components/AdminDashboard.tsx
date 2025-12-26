@@ -25,9 +25,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   const loadLeads = async () => {
     setLoading(true);
-    const data = await AdminService.getGlobalLeads();
-    setLeads(data);
-    setLoading(false);
+    try {
+      const data = await AdminService.getGlobalLeads();
+      setLeads(data);
+    } catch (e) {
+      console.error("Erreur chargement leads:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { 
@@ -70,7 +75,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     const term = searchTerm.toLowerCase();
     const nameMatch = (lead.user.firstName || "").toLowerCase().includes(term);
     const projMatch = lead.lastSimulation ? lead.lastSimulation.name.toLowerCase().includes(term) : false;
-    const emailMatch = lead.user.email.toLowerCase().includes(term);
+    const emailMatch = (lead.user.email || "").toLowerCase().includes(term);
     const matchesSearch = emailMatch || nameMatch || projMatch;
     
     if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
@@ -199,10 +204,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                           <table className="min-w-full divide-y divide-slate-100 table-fixed">
                               <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                   <tr>
-                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Client & Projet</th>
+                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Prospect & Projet</th>
                                       <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">CRM Status</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Audit Score</th>
-                                      <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Triage Audit</th>
+                                      <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -214,12 +219,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                           <td className="px-6 py-4">
                                               <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
-                                                   <span className="text-[10px] font-black text-slate-900 uppercase tracking-tight truncate">
+                                                   <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
                                                       {lead.user.firstName || "Inconnu"}
                                                    </span>
                                                    {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
                                                 </div>
-                                                <span className="text-[9px] text-slate-400 font-bold">{lead.user.email}</span>
+                                                <span className="text-[10px] text-slate-400 font-bold lowercase">{lead.user.email}</span>
                                                 <div className="mt-1 flex items-center gap-1.5">
                                                    <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded border border-indigo-100 font-black uppercase">
                                                       {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit"}
@@ -261,7 +266,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                           {showFullReport && selectedLead.lastSimulation ? (
                             <div className="flex-1 overflow-y-auto relative bg-slate-50">
                                <button onClick={() => setShowFullReport(false)} className="fixed top-24 right-12 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-indigo-600 transition-all">
-                                 &larr; Retour Cockpit Admin
+                                 &larr; Retour CRM
                                </button>
                                <div className="scale-90 origin-top pt-10">
                                   <ResultsDisplay inputs={selectedLead.lastSimulation.inputs} results={selectedLead.lastSimulation.results} />
@@ -274,7 +279,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                                    <div className="relative z-10 flex justify-between items-start">
                                       <div className="space-y-1">
-                                         <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ CLIENT</p>
+                                         <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ DÉTECTÉE</p>
                                          <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || "Inconnu"}</h2>
                                          <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                          <p className="text-[10px] text-slate-500 font-medium italic">Inscrit le {new Date(selectedLead.user.createdAt).toLocaleDateString()} à {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
@@ -287,14 +292,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    </div>
                                    
                                    <div className="mt-8 flex gap-3">
-                                      {(selectedLead.user.consultingValue || 0) > 0 ? (
-                                        <span className="bg-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">💎 Client Consulting</span>
-                                      ) : null}
-                                      {(selectedLead.user.purchasedProducts?.length || 0) > 0 ? (
+                                      {(selectedLead.user.consultingValue || 0) > 0 && (
+                                        <span className="bg-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">💎 Premium Consulting</span>
+                                      )}
+                                      {(selectedLead.user.purchasedProducts?.length || 0) > 0 && (
                                         <span className="bg-emerald-500 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">🛒 Acheteur Digital</span>
-                                      ) : null}
-                                      {!(selectedLead.user.consultingValue || 0) && !(selectedLead.user.purchasedProducts?.length || 0) && (
-                                        <span className="bg-slate-800 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">🧊 Prospect Froid</span>
                                       )}
                                    </div>
                                 </div>
@@ -317,14 +319,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                    <div className="bg-indigo-50 p-6 rounded-[2.5rem] border border-indigo-100 flex flex-col">
                                       <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Bibliothèque Clients</h4>
                                       <div className="flex-1 space-y-3">
-                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Guides Débloqués :</p>
+                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Produits actifs :</p>
                                          <div className="flex flex-wrap gap-1.5">
                                             {(selectedLead.user.purchasedProducts?.length || 0) > 0 ? (
                                               selectedLead.user.purchasedProducts?.map(p => (
                                                 <span key={p} className="bg-white px-2.5 py-1 rounded-lg text-[8px] font-black uppercase border border-indigo-100 text-indigo-600 shadow-sm">{p}</span>
                                               ))
                                             ) : (
-                                              <p className="text-[9px] text-slate-400 italic font-medium leading-relaxed">Aucun guide acheté.</p>
+                                              <p className="text-[9px] text-slate-400 italic font-medium leading-relaxed">Aucun guide acheté sur la boutique.</p>
                                             )}
                                          </div>
                                       </div>
@@ -335,34 +337,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                 {!selectedLead.lastSimulation ? (
                                   <div className="bg-slate-50 rounded-[2.5rem] p-12 text-center border border-dashed border-slate-200">
                                     <span className="text-4xl block mb-4">🧊</span>
-                                    <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">Pas d'Audit Andromeda</h5>
-                                    <p className="text-[10px] text-slate-400 italic max-w-[200px] mx-auto leading-relaxed">Cet utilisateur ne s'est pas encore servi du simulateur.</p>
+                                    <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">Aucun audit Andromeda</h5>
+                                    <p className="text-[10px] text-slate-400 italic max-w-[200px] mx-auto leading-relaxed">Cet utilisateur n'a pas encore lancé de diagnostic de performance.</p>
                                   </div>
                                 ) : (
                                   <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="bg-indigo-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-indigo-100">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-2">Trésorerie Latente</p>
-                                            <p className="text-3xl font-black text-white">{formatCurrency((selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0) * 4.34)}</p>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-2">Provision Hebdo</p>
+                                            <p className="text-3xl font-black text-white">{formatCurrency(selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0)}</p>
                                         </div>
                                         <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Signal Pixel</p>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Andromeda Score</p>
                                             <p className="text-3xl font-black text-emerald-400">{selectedLead.lastSimulation.inputs.emqScore}/10</p>
                                         </div>
                                     </div>
 
-                                    <div className="bg-white border border-slate-100 p-8 rounded-[2.5rem] space-y-6">
+                                    <div className="bg-white border border-slate-100 p-8 rounded-[2.5rem] space-y-6 shadow-sm">
                                        <div className="flex justify-between items-center">
-                                          <div>
-                                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Projet Analysé</h3>
-                                             <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">{selectedLead.lastSimulation.name}</p>
+                                          <div className="max-w-[70%]">
+                                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dernier Audit</h3>
+                                             <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter truncate">{selectedLead.lastSimulation.name}</p>
                                           </div>
                                           <button onClick={() => setShowFullReport(true)} className="bg-slate-50 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-50 transition-all">
                                              Voir Rapport &rarr;
                                           </button>
                                        </div>
                                        <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-[2rem]">
-                                          <h3 className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-3">Argumentaire Closing</h3>
+                                          <h3 className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-3">Argumentaire Closing Andromeda</h3>
                                           <p className="text-[11px] text-indigo-900 font-medium italic leading-relaxed">"{closingPitch.text}"</p>
                                        </div>
                                     </div>
@@ -372,12 +374,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                 {/* NOTES EXPERT */}
                                 <div className="space-y-4 pb-12">
                                    <div className="flex items-center gap-2">
-                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes Privées (CRM)</h3>
+                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes Stratégiques Internes</h3>
                                       <span className="h-px flex-1 bg-slate-100"></span>
                                    </div>
                                    <textarea 
                                      className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300" 
-                                     placeholder="Prochaine action pour ce prospect..." 
+                                     placeholder="Quelles sont les prochaines étapes pour ce client ? (Note privée)" 
                                      value={expertNote} 
                                      onChange={(e) => setExpertNote(e.target.value)} 
                                    />
@@ -385,7 +387,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                      onClick={handleSaveNote} 
                                      className="w-full bg-slate-900 text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-600 transition-all disabled:opacity-30 active:scale-95"
                                    >
-                                     Enregistrer Historique &rarr;
+                                     Enregistrer Note Expert &rarr;
                                    </button>
                                 </div>
                             </div>
@@ -394,8 +396,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30">
                             <Logo iconOnly className="scale-150 mb-10 opacity-20" />
-                            <p className="font-black uppercase tracking-[0.4em] text-[11px]">Sélectionnez un Profil dans le Pipeline</p>
-                            <p className="text-[10px] text-slate-400 mt-2 italic">Andromeda Cockpit v5.3 — CRM Activé</p>
+                            <p className="font-black uppercase tracking-[0.4em] text-[11px]">Cockpit Pipeline AdsPilot</p>
+                            <p className="text-[10px] text-slate-400 mt-2 italic">Sélectionnez un profil pour voir ses performances Meta.</p>
                         </div>
                       )}
                   </div>
@@ -403,7 +405,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
             </>
           ) : (
             <div className="flex-1 overflow-y-auto p-12 bg-slate-50">
-               <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-10">Librairie des <span className="text-indigo-600">Guides AdsPilot</span></h2>
+               <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-10">Gestion des <span className="text-indigo-600">Offres Digitales</span></h2>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {guides.map(guide => (
                     <div key={guide.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -412,7 +414,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                        <p className="text-xs text-slate-400 mb-6 italic leading-relaxed">{guide.description}</p>
                        <div className="flex justify-between items-center pt-6 border-t border-slate-50">
                           <span className="text-xl font-black text-slate-900">{guide.price}</span>
-                          <button className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Editer &rarr;</button>
+                          <button className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Modifier &rarr;</button>
                        </div>
                     </div>
                   ))}
