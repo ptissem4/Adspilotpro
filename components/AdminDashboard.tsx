@@ -68,9 +68,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   const filteredLeads = leads.filter(lead => {
     const term = searchTerm.toLowerCase();
-    const nameMatch = lead.lastSimulation ? lead.lastSimulation.name.toLowerCase().includes(term) : false;
+    const nameMatch = (lead.user.firstName || "").toLowerCase().includes(term);
+    const projMatch = lead.lastSimulation ? lead.lastSimulation.name.toLowerCase().includes(term) : false;
     const emailMatch = lead.user.email.toLowerCase().includes(term);
-    const matchesSearch = emailMatch || nameMatch;
+    const matchesSearch = emailMatch || nameMatch || projMatch;
     
     if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
     if (filterType === 'premium') return matchesSearch && (lead.user.consultingValue || 0) > 0;
@@ -162,20 +163,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       <main className="flex-1 flex flex-col overflow-hidden relative">
           {activeTab === 'pipeline' ? (
             <>
-              <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 z-10">
+              <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 z-10">
                   <div className="flex items-center gap-4">
                     <h1 className="text-sm font-black text-slate-900 uppercase italic tracking-tighter">Flux Pipeline</h1>
                     <button onClick={loadLeads} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
                       <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
                     </button>
-                    <div className="hidden sm:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{leads.length} Comptes Détectés</span>
+                    <div className="flex gap-2">
+                        <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Tous</button>
+                        <button onClick={() => setFilterType('buyers')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'buyers' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Acheteurs</button>
+                        <button onClick={() => setFilterType('premium')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'premium' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Consulting</button>
                     </div>
                   </div>
                   <div className="relative w-80">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                    <input type="text" placeholder="Rechercher email ou projet..." className="w-full bg-slate-50 border border-slate-200 py-2 pl-10 pr-4 rounded-xl text-xs font-medium outline-none transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Nom, email ou projet..." className="w-full bg-slate-50 border border-slate-200 py-2.5 pl-10 pr-4 rounded-xl text-xs font-medium outline-none transition-all focus:ring-2 ring-indigo-500/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
               </header>
 
@@ -190,157 +192,200 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                         <div className="bg-white rounded-[2rem] p-20 text-center border border-slate-200 shadow-sm">
                            <p className="text-4xl mb-4">🏜️</p>
                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Aucun prospect trouvé</h3>
-                           <p className="text-xs text-slate-400 italic">Vérifiez que vos utilisateurs se sont bien connectés au moins une fois pour synchroniser leur profil.</p>
+                           <p className="text-xs text-slate-400 italic">Vérifiez vos filtres ou invitez de nouveaux utilisateurs.</p>
                         </div>
                       ) : (
                         <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
                           <table className="min-w-full divide-y divide-slate-100 table-fixed">
                               <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                   <tr>
-                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Prospect</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Triage</th>
-                                      <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit le</th>
+                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Client & Projet</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">CRM Status</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Audit Score</th>
+                                      <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                  {filteredLeads.map((lead) => (
-                                    <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                              <span className={`text-[10px] font-black tracking-tight uppercase truncate ${!lead.lastSimulation ? 'text-indigo-400' : 'text-slate-900'}`}>
-                                                 {lead.lastSimulation ? lead.lastSimulation.name : (lead.user.email === adminUser.email ? "👑 ADMIN (MOI)" : "🆕 NOUVEL INSCRIT")}
+                                  {filteredLeads.map((lead) => {
+                                    const isBuyer = (lead.user.purchasedProducts?.length || 0) > 0;
+                                    const isConsulting = (lead.user.consultingValue || 0) > 0;
+                                    return (
+                                      <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
+                                          <td className="px-6 py-4">
+                                              <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                   <span className="text-[10px] font-black text-slate-900 uppercase tracking-tight truncate">
+                                                      {lead.user.firstName || "Inconnu"}
+                                                   </span>
+                                                   {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
+                                                </div>
+                                                <span className="text-[9px] text-slate-400 font-bold">{lead.user.email}</span>
+                                                <div className="mt-1 flex items-center gap-1.5">
+                                                   <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded border border-indigo-100 font-black uppercase">
+                                                      {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit"}
+                                                   </span>
+                                                </div>
+                                              </div>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                              <div className="flex flex-col items-center gap-1">
+                                                 {isConsulting && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Premium</span>}
+                                                 {isBuyer && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Acheteur</span>}
+                                                 {!isConsulting && !isBuyer && <span className="text-[7px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Prospect</span>}
+                                              </div>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                              <div className="flex justify-center gap-1.5">
+                                                  {getStatusDot('signal', lead)}
+                                                  {getStatusDot('ltv', lead)}
+                                                  {getStatusDot('scaling', lead)}
+                                              </div>
+                                          </td>
+                                          <td className="px-6 py-4 text-right">
+                                              <span className="text-[9px] text-slate-400 font-black uppercase">
+                                                {new Date(lead.user.createdAt).toLocaleDateString()}
                                               </span>
-                                              <span className="text-[9px] text-slate-400 font-bold lowercase">{lead.user.email}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex justify-center gap-1.5">
-                                                {getStatusDot('signal', lead)}
-                                                {getStatusDot('ltv', lead)}
-                                                {getStatusDot('scaling', lead)}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="text-[9px] text-slate-400 font-black uppercase">
-                                              {new Date(lead.user.createdAt).toLocaleDateString()}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                  ))}
+                                          </td>
+                                      </tr>
+                                    );
+                                  })}
                               </tbody>
                           </table>
                         </div>
                       )}
                   </div>
 
-                  <div className="w-[550px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col">
+                  <div className="w-[550px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col shadow-2xl">
                       {selectedLead ? (
                         <div className="flex-1 flex flex-col min-h-0">
                           {showFullReport && selectedLead.lastSimulation ? (
-                            <div className="flex-1 overflow-y-auto relative">
-                               <button onClick={() => setShowFullReport(false)} className="fixed top-20 right-8 z-[100] bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl">
-                                 &larr; Retour CRM
+                            <div className="flex-1 overflow-y-auto relative bg-slate-50">
+                               <button onClick={() => setShowFullReport(false)} className="fixed top-24 right-12 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-indigo-600 transition-all">
+                                 &larr; Retour Cockpit Admin
                                </button>
-                               <div className="scale-90 origin-top">
+                               <div className="scale-90 origin-top pt-10">
                                   <ResultsDisplay inputs={selectedLead.lastSimulation.inputs} results={selectedLead.lastSimulation.results} />
                                </div>
                             </div>
                           ) : (
                             <div className="p-8 space-y-8 animate-fade-in flex-1 overflow-y-auto">
-                                <div className="border-b border-slate-100 pb-6 flex justify-between items-start">
-                                   <div className="max-w-[70%]">
-                                      <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-1">PROFIL DÉTECTÉ</h2>
-                                      <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 truncate leading-tight">
-                                        {selectedLead.user.firstName || "Inconnu"}
-                                      </h2>
-                                      <p className="text-[9px] text-indigo-400 font-bold">{selectedLead.user.email}</p>
+                                {/* HEADER PROFIL DÉTAILLÉ */}
+                                <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                                   <div className="relative z-10 flex justify-between items-start">
+                                      <div className="space-y-1">
+                                         <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] italic mb-2">IDENTITÉ CLIENT</p>
+                                         <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.firstName || "Inconnu"}</h2>
+                                         <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
+                                         <p className="text-[10px] text-slate-500 font-medium italic">Inscrit le {new Date(selectedLead.user.createdAt).toLocaleDateString()} à {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                      </div>
+                                      <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value as any)} className="bg-white/10 border border-white/20 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white outline-none cursor-pointer">
+                                           <option value="new" className="text-slate-900">🔴 Nouveau</option>
+                                           <option value="contacted" className="text-slate-900">🟠 En Cours</option>
+                                           <option value="closed" className="text-slate-900">🟢 Terminé</option>
+                                      </select>
                                    </div>
-                                   <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value as any)} className="bg-slate-50 border border-slate-200 text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl">
-                                        <option value="new">🔴 Nouveau</option>
-                                        <option value="contacted">🟠 En Cours</option>
-                                        <option value="closed">🟢 Terminé</option>
-                                   </select>
+                                   
+                                   <div className="mt-8 flex gap-3">
+                                      {(selectedLead.user.consultingValue || 0) > 0 ? (
+                                        <span className="bg-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">💎 Client Consulting</span>
+                                      ) : null}
+                                      {(selectedLead.user.purchasedProducts?.length || 0) > 0 ? (
+                                        <span className="bg-emerald-500 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">🛒 Acheteur Digital</span>
+                                      ) : null}
+                                      {!(selectedLead.user.consultingValue || 0) && !(selectedLead.user.purchasedProducts?.length || 0) && (
+                                        <span className="bg-slate-800 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">🧊 Prospect Froid</span>
+                                      )}
+                                   </div>
                                 </div>
 
+                                {/* FINANCES & PRODUITS */}
                                 <div className="grid grid-cols-2 gap-4">
-                                   <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Finances Client</h4>
+                                   <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between">
+                                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Valeur Consulting</h4>
                                       <div className="space-y-4">
-                                         <div>
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Consulting</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                              <input type="number" value={consultingInput} onChange={(e) => setConsultingInput(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-black" />
-                                              <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-2 rounded-lg text-xs">OK</button>
-                                            </div>
+                                         <div className="flex items-center gap-2">
+                                            <input type="number" value={consultingInput} onChange={(e) => setConsultingInput(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 ring-indigo-500/20 outline-none" placeholder="0 €" />
+                                            <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100">OK</button>
                                          </div>
-                                         <div>
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Inscrit le</p>
-                                            <p className="text-xs font-bold text-slate-900">{new Date(selectedLead.user.createdAt).toLocaleDateString()} {new Date(selectedLead.user.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                         <div className="bg-white p-3 rounded-xl border border-slate-100">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Encaissé</p>
+                                            <p className="text-xl font-black text-slate-900">{formatCurrency(selectedLead.user.consultingValue || 0)}</p>
                                          </div>
                                       </div>
                                    </div>
-                                   <div className="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100">
-                                      <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Bibliothèque</h4>
-                                      <div className="space-y-2">
-                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Produits possédés</p>
-                                         {(selectedLead.user.purchasedProducts?.length || 0) > 0 ? (
-                                           <div className="flex flex-wrap gap-1">
-                                              {selectedLead.user.purchasedProducts?.map(p => (
-                                                <span key={p} className="bg-white px-2 py-1 rounded text-[8px] font-black uppercase border border-indigo-100">{p}</span>
-                                              ))}
-                                           </div>
-                                         ) : (
-                                           <p className="text-[9px] text-slate-400 italic">Aucun achat détecté</p>
-                                         )}
+                                   <div className="bg-indigo-50 p-6 rounded-[2.5rem] border border-indigo-100 flex flex-col">
+                                      <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Bibliothèque Clients</h4>
+                                      <div className="flex-1 space-y-3">
+                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Guides Débloqués :</p>
+                                         <div className="flex flex-wrap gap-1.5">
+                                            {(selectedLead.user.purchasedProducts?.length || 0) > 0 ? (
+                                              selectedLead.user.purchasedProducts?.map(p => (
+                                                <span key={p} className="bg-white px-2.5 py-1 rounded-lg text-[8px] font-black uppercase border border-indigo-100 text-indigo-600 shadow-sm">{p}</span>
+                                              ))
+                                            ) : (
+                                              <p className="text-[9px] text-slate-400 italic font-medium leading-relaxed">Aucun guide acheté.</p>
+                                            )}
+                                         </div>
                                       </div>
                                    </div>
                                 </div>
                                 
+                                {/* AUDIT RÉCENT */}
                                 {!selectedLead.lastSimulation ? (
-                                  <div className="bg-slate-50 rounded-[2rem] p-10 text-center border border-dashed border-slate-200">
+                                  <div className="bg-slate-50 rounded-[2.5rem] p-12 text-center border border-dashed border-slate-200">
                                     <span className="text-4xl block mb-4">🧊</span>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Lead à travailler</p>
-                                    <p className="text-[10px] text-slate-400 italic">Cet utilisateur s'est inscrit mais n'a pas encore lancé de diagnostic Andromeda.</p>
+                                    <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">Pas d'Audit Andromeda</h5>
+                                    <p className="text-[10px] text-slate-400 italic max-w-[200px] mx-auto leading-relaxed">Cet utilisateur ne s'est pas encore servi du simulateur.</p>
                                   </div>
                                 ) : (
-                                  <>
+                                  <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-900 p-6 rounded-[2rem] text-white">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Trésorerie Latente</p>
-                                            <p className="text-3xl font-black text-emerald-400">{formatCurrency((selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0) * 4.34)}</p>
+                                        <div className="bg-indigo-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-indigo-100">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-2">Trésorerie Latente</p>
+                                            <p className="text-3xl font-black text-white">{formatCurrency((selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0) * 4.34)}</p>
                                         </div>
-                                        <div className="bg-indigo-600 p-6 rounded-[2rem] text-white">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-2">EMQ Signal</p>
-                                            <p className="text-3xl font-black text-white">{selectedLead.lastSimulation.inputs.emqScore}/10</p>
+                                        <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Signal Pixel</p>
+                                            <p className="text-3xl font-black text-emerald-400">{selectedLead.lastSimulation.inputs.emqScore}/10</p>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="bg-white border border-slate-100 p-8 rounded-[2.5rem] space-y-6">
                                        <div className="flex justify-between items-center">
-                                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rapport Andromeda</h3>
-                                          <button onClick={() => setShowFullReport(true)} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Voir rapport complet &rarr;</button>
+                                          <div>
+                                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Projet Analysé</h3>
+                                             <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">{selectedLead.lastSimulation.name}</p>
+                                          </div>
+                                          <button onClick={() => setShowFullReport(true)} className="bg-slate-50 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-50 transition-all">
+                                             Voir Rapport &rarr;
+                                          </button>
                                        </div>
-                                       <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-[2rem] space-y-4">
-                                          <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Argumentaire Closing</h3>
-                                          <div className="bg-white/50 p-4 rounded-xl text-xs text-slate-600 font-medium italic">"{closingPitch.text}"</div>
+                                       <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-[2rem]">
+                                          <h3 className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-3">Argumentaire Closing</h3>
+                                          <p className="text-[11px] text-indigo-900 font-medium italic leading-relaxed">"{closingPitch.text}"</p>
                                        </div>
                                     </div>
-                                  </>
+                                  </div>
                                 )}
 
-                                <div className="space-y-4">
-                                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes Internes / Client</h3>
+                                {/* NOTES EXPERT */}
+                                <div className="space-y-4 pb-12">
+                                   <div className="flex items-center gap-2">
+                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes Privées (CRM)</h3>
+                                      <span className="h-px flex-1 bg-slate-100"></span>
+                                   </div>
                                    <textarea 
-                                     className="w-full h-32 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-medium focus:ring-2 ring-indigo-500 outline-none" 
-                                     placeholder="Note stratégique..." 
+                                     className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300" 
+                                     placeholder="Prochaine action pour ce prospect..." 
                                      value={expertNote} 
                                      onChange={(e) => setExpertNote(e.target.value)} 
                                    />
                                    <button 
                                      onClick={handleSaveNote} 
-                                     className="w-full bg-slate-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                                     className="w-full bg-slate-900 text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-600 transition-all disabled:opacity-30 active:scale-95"
                                    >
-                                     Enregistrer Note &rarr;
+                                     Enregistrer Historique &rarr;
                                    </button>
                                 </div>
                             </div>
@@ -348,8 +393,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                         </div>
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30">
-                            <span className="text-4xl mb-6">📂</span>
-                            <p className="font-black uppercase tracking-[0.3em] text-[10px]">Sélectionnez un Prospect</p>
+                            <Logo iconOnly className="scale-150 mb-10 opacity-20" />
+                            <p className="font-black uppercase tracking-[0.4em] text-[11px]">Sélectionnez un Profil dans le Pipeline</p>
+                            <p className="text-[10px] text-slate-400 mt-2 italic">Andromeda Cockpit v5.3 — CRM Activé</p>
                         </div>
                       )}
                   </div>
@@ -357,7 +403,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
             </>
           ) : (
             <div className="flex-1 overflow-y-auto p-12 bg-slate-50">
-               {/* Librairie Guides */}
+               <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-10">Librairie des <span className="text-indigo-600">Guides AdsPilot</span></h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {guides.map(guide => (
+                    <div key={guide.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                       <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl mb-6 shadow-inner">{guide.icon}</div>
+                       <h4 className="text-xl font-black uppercase tracking-tighter mb-2">{guide.title}</h4>
+                       <p className="text-xs text-slate-400 mb-6 italic leading-relaxed">{guide.description}</p>
+                       <div className="flex justify-between items-center pt-6 border-t border-slate-50">
+                          <span className="text-xl font-black text-slate-900">{guide.price}</span>
+                          <button className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Editer &rarr;</button>
+                       </div>
+                    </div>
+                  ))}
+               </div>
             </div>
           )}
       </main>
