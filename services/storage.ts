@@ -147,7 +147,7 @@ export const AdminService = {
         };
       });
     } catch (e) { 
-      console.error(e);
+      console.error("AdminService.getGlobalLeads Error:", e);
       return []; 
     }
   },
@@ -155,5 +155,5 @@ export const AdminService = {
   updateLeadConsulting: async (userId: string, value: number) => { await supabase.from('profiles').update({ consulting_value: value }).eq('id', userId); },
   getNewLeadsCount: async (): Promise<number> => { try { const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'new'); return count || 0; } catch (e) { return 0; } },
   getGuides: (): Guide[] => { return DEFAULT_GUIDES; },
-  saveGuide: (guide: Guide) => { console.log("Guide saved locally"); }
+  saveGuide: (guide: Guide) => { console.log("Guide saved"); }
 };
