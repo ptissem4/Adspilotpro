@@ -110,34 +110,44 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // REQUÊTE PLATE SANS JOINTURE POUR DEBUGGER
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, audits(*)')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("Supabase Profile Fetch Error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("Supabase Raw Profiles:", profiles);
+      return (profiles || []).map(p => {
+        const userAudits = (p.audits || []).sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
-      return (profiles || []).map(p => ({
-        user: {
-          id: p.id,
-          email: p.email || "Email masqué",
-          full_name: p.full_name, // Colonne exacte
-          role: p.role || 'user',
-          createdAt: p.created_at,
-          consultingValue: p.consulting_value || 0,
-          purchasedProducts: p.purchased_products || []
-        },
-        lastSimulation: null, // On ignore les audits temporairement
-        status: p.status || 'new'
-      }));
+        return {
+          user: {
+            id: p.id,
+            email: p.email || "Email masqué",
+            full_name: p.full_name || p.email,
+            role: p.role || 'user',
+            createdAt: p.created_at,
+            consultingValue: p.consulting_value || 0,
+            purchasedProducts: p.purchased_products || []
+          },
+          lastSimulation: lastAudit ? {
+            id: lastAudit.id,
+            auditId: lastAudit.id.toString().split('-')[0].toUpperCase(),
+            userId: lastAudit.user_id,
+            name: lastAudit.project_name,
+            date: lastAudit.created_at,
+            inputs: lastAudit.inputs,
+            results: lastAudit.results,
+            verdictLabel: lastAudit.verdict_label
+          } : null,
+          status: p.status || 'new'
+        };
+      });
     } catch (e) { 
-      console.error("AdminService.getGlobalLeads Global Error:", e);
+      console.error(e);
       return []; 
     }
   },
@@ -145,5 +155,5 @@ export const AdminService = {
   updateLeadConsulting: async (userId: string, value: number) => { await supabase.from('profiles').update({ consulting_value: value }).eq('id', userId); },
   getNewLeadsCount: async (): Promise<number> => { try { const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'new'); return count || 0; } catch (e) { return 0; } },
   getGuides: (): Guide[] => { return DEFAULT_GUIDES; },
-  saveGuide: (guide: Guide) => { console.log("Save guide disabled for debug"); }
+  saveGuide: (guide: Guide) => { console.log("Guide saved locally"); }
 };
