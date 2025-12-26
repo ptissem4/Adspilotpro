@@ -47,7 +47,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
-      AdminService.getNewLeadsCount().then(setNewLeadsCount);
+      AdminService.getNewLeadsCount().then(setNewLeadsCount).catch(() => {});
     }
   }, [currentUser, appMode]);
 
@@ -131,12 +131,10 @@ export default function App() {
 
   const handleSaveAuditLocally = async (projectName: string) => {
     setIsSaving(true);
-    // On met à jour le projet dans les inputs locaux pour que l'objet en attente soit complet
     const updatedInputs = { ...inputs, projectName };
     
     if (!currentUser) {
       setPendingAudit({ projectName, inputs: updatedInputs, results });
-      // On simule un petit temps de réflexion pour le feeling Premium
       setTimeout(() => {
         setIsSaving(false);
         setShowSaveModal(false);
@@ -167,18 +165,14 @@ export default function App() {
       try {
         const finalInputs = { ...pendingAudit.inputs, projectName: pendingAudit.projectName };
         const verdict = calculateVerdict(finalInputs, pendingAudit.results);
-        
-        // CRUCIAL : On attend que la sauvegarde soit terminée avant de basculer
         await AuditService.saveAudit(user, finalInputs, pendingAudit.results, verdict);
-        
         setPendingAudit(null);
-        setIsSaving(false);
         showNotification("Audit lié à votre nouveau compte ! 🚀");
-        setAppMode('dashboard');
       } catch (e) {
+        console.error("Link error:", e);
+      } finally {
         setIsSaving(false);
-        showNotification("L'audit sera disponible dans quelques instants.", "success");
-        setAppMode('dashboard');
+        setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
       }
     } else {
       setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
@@ -196,13 +190,11 @@ export default function App() {
         verdictLabel: verdict,
         date: new Date().toISOString()
       });
-      setTimeout(() => {
-        setIsSaving(false);
-        showNotification("Modifications enregistrées avec succès !");
-      }, 1000);
+      showNotification("Modifications enregistrées !");
     } catch (e) {
-      setIsSaving(false);
       showNotification("Erreur lors de la mise à jour", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -212,7 +204,7 @@ export default function App() {
         <LandingPage 
           onStart={() => setAppMode('selection')} 
           onBoutique={() => setAppMode('boutique')} 
-          onLogin={() => setShowAuthModal(true)} 
+          onLogin={() => { setShowAuthModal(true); setPendingAudit(null); }} 
           currentUser={currentUser} 
           onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} 
           newLeadsCount={newLeadsCount} 
@@ -220,24 +212,8 @@ export default function App() {
       </div>
     );
 
-    if (appMode === 'admin_dashboard') return (
-      <div className="flex-1 h-full overflow-hidden bg-slate-100">
-        <AdminDashboard adminUser={currentUser!} onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} />
-      </div>
-    );
-
-    if (appMode === 'dashboard') return (
-      <div className="flex-1 h-full overflow-hidden bg-slate-50">
-        <Dashboard 
-          user={currentUser!} 
-          onLoadSimulation={(sim) => { setInputs(sim.inputs); setCurrentAuditId(sim.id); setAppMode('results'); }} 
-          onNewSimulation={() => { setCurrentAuditId(null); setAppMode('selection'); }} 
-          onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} 
-          onNotification={showNotification} 
-          onGoToBoutique={() => setAppMode('boutique')} 
-        />
-      </div>
-    );
+    if (appMode === 'admin_dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-100"><AdminDashboard adminUser={currentUser} onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} /></div>;
+    if (appMode === 'dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-50"><Dashboard user={currentUser} onLoadSimulation={(sim) => { setInputs(sim.inputs); setCurrentAuditId(sim.id); setAppMode('results'); }} onNewSimulation={() => { setCurrentAuditId(null); setAppMode('selection'); }} onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} onNotification={showNotification} onGoToBoutique={() => setAppMode('boutique')} /></div>;
 
     if (appMode === 'boutique') return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -281,7 +257,7 @@ export default function App() {
         <button onClick={() => setAppMode('boutique')} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600">💎 Boutique</button>
         {currentUser ? (
           <button onClick={() => setAppMode(currentUser.role === 'admin' ? 'admin_dashboard' : 'dashboard')} className="bg-slate-50 text-slate-900 border border-slate-200 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
-            {currentUser.role === 'admin' ? '👑 Admin Panel' : '👤 Mon Espace'}
+            {currentUser.role === 'admin' ? '👑 Admin' : '👤 Espace Client'}
           </button>
         ) : (
           <button onClick={() => setShowAuthModal(true)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Connexion</button>

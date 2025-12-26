@@ -11,12 +11,17 @@ const MANUAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 
 const getEnvValue = (key: string): string => {
   if (typeof window === 'undefined') return '';
-  // @ts-ignore
-  return (import.meta.env?.[key] || window?._env_?.[key] || '').trim();
+  try {
+    // @ts-ignore
+    const val = (import.meta.env?.[key] || (window as any)?._env_?.[key] || (process?.env as any)?.[key] || '').trim();
+    return val;
+  } catch (e) {
+    return '';
+  }
 };
 
-const url = (MANUAL_URL || getEnvValue('NEXT_PUBLIC_SUPABASE_URL')).replace(/\/$/, "");
-const key = (MANUAL_KEY || getEnvValue('NEXT_PUBLIC_SUPABASE_ANON_KEY')).trim();
+const url = (MANUAL_URL || getEnvValue('NEXT_PUBLIC_SUPABASE_URL') || '').replace(/\/$/, "");
+const key = (MANUAL_KEY || getEnvValue('NEXT_PUBLIC_SUPABASE_ANON_KEY') || '').trim();
 
 export const configDiagnostic = {
   hasUrl: url.length > 10 && url.startsWith('http'),
@@ -24,7 +29,7 @@ export const configDiagnostic = {
   url: url
 };
 
-// On initialise avec les valeurs trouvées ou des placeholders pour éviter le crash au chargement
+// Initialisation sécurisée
 export const supabase = createClient(
   configDiagnostic.hasUrl ? url : 'https://placeholder.supabase.co', 
   configDiagnostic.hasKey ? key : 'placeholder'
