@@ -84,10 +84,17 @@ export const AuthService = {
   register: async (email: string, password: string, firstName: string): Promise<UserProfile> => {
     if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré.");
 
+    // Production Mode: Assurer que les métadonnées sont envoyées au moteur Auth de Supabase
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: firstName, first_name: firstName } }
+      options: { 
+        data: { 
+          full_name: firstName, 
+          display_name: firstName,
+          first_name: firstName 
+        } 
+      }
     });
 
     if (error) throw error;
@@ -97,6 +104,7 @@ export const AuthService = {
     const role = isExplicitAdmin ? 'admin' : 'user';
 
     try {
+      // Création explicite du profil dans la table publique
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: email.toLowerCase(),

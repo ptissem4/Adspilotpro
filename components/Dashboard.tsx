@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { UserProfile, SimulationHistory } from '../types';
 import { AuditService, AuthService } from '../services/storage';
+import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 import { AuditExplainer } from './AuditExplainer';
 import { Boutique } from './Boutique';
@@ -35,6 +36,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
 
   useEffect(() => {
     loadHistory();
+
+    // TEMPS RÉEL : Écoute des changements sur la table audits pour cet utilisateur
+    const channel = supabase
+      .channel(`audits_user_${user.id}`)
+      .on(
+        'postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'audits',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        (payload) => {
+          console.log("🚀 Temps réel : Changement détecté !", payload);
+          loadHistory(); // Recharger proprement les données
+          if (payload.eventType === 'INSERT' && onNotification) {
+            onNotification("Nouvel audit synchronisé !");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user.id]);
 
   const latestSim = useMemo(() => history[0], [history]);
