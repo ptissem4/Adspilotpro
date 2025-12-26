@@ -27,6 +27,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     setLoading(true);
     try {
       const data = await AdminService.getGlobalLeads();
+      console.log("Leads loaded in Dashboard:", data);
       setLeads(data);
     } catch (e) {
       console.error("Erreur chargement leads:", e);
@@ -57,19 +58,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     return { title: "Scale Prêt", text: "Metrics au vert. Sécurisez la montée en charge verticale." };
   }, [selectedLead]);
 
-  const filteredLeads = leads.filter(lead => {
-    const term = searchTerm.toLowerCase();
-    const nameMatch = (lead.user.full_name || "").toLowerCase().includes(term);
-    const emailMatch = (lead.user.email || "").toLowerCase().includes(term);
-    const matchesSearch = nameMatch || emailMatch;
-    
-    if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
-    if (filterType === 'premium') return matchesSearch && (lead.user.consultingValue || 0) > 0;
-    return matchesSearch;
-  });
+  // FILTRAGE INCONDITIONNEL (On affiche tout par défaut)
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      const term = searchTerm.toLowerCase();
+      const nameMatch = (lead.user.full_name || "").toLowerCase().includes(term);
+      const emailMatch = (lead.user.email || "").toLowerCase().includes(term);
+      const matchesSearch = nameMatch || emailMatch;
+      
+      if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
+      if (filterType === 'premium') return matchesSearch && (lead.user.consultingValue || 0) > 0;
+      return matchesSearch;
+    });
+  }, [leads, searchTerm, filterType]);
 
   const getStatusDot = (type: 'signal' | 'ltv' | 'scaling', lead: LeadData) => {
-    if (!lead.lastSimulation) return <div className="w-2 h-2 rounded-full bg-slate-100 shadow-inner" />;
+    if (!lead.lastSimulation) return <div className="w-2 h-2 rounded-full bg-slate-200 opacity-30 shadow-inner" />;
     let color = 'bg-slate-200';
     const inputs = lead.lastSimulation.inputs;
     if (type === 'signal') {
@@ -80,7 +84,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       color = ratio > 1.3 ? 'bg-emerald-500' : 'bg-red-500';
     } else if (type === 'scaling') {
       const results = lead.lastSimulation.results;
-      color = results.recommendationType === 'scale' ? 'bg-emerald-500' : 'bg-amber-500';
+      color = (results?.recommendationType === 'scale') ? 'bg-emerald-500' : 'bg-amber-500';
     }
     return <div className={`w-2 h-2 rounded-full ${color} shadow-sm transition-colors`} />;
   };
@@ -116,7 +120,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
-      {/* SIDEBAR V5.3 RESTAURÉE */}
+      {/* SIDEBAR V5.3 */}
       <aside className="w-full md:w-64 bg-slate-900 text-white shrink-0 flex flex-col z-20 shadow-2xl">
           <div className="p-6 border-b border-slate-800">
               <Logo className="invert brightness-0 scale-90 origin-left" />
@@ -128,9 +132,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
           <nav className="flex-1 p-4 overflow-y-auto space-y-2">
               <button onClick={() => setActiveTab('pipeline')} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
                 <span className="text-lg">🎯</span> Pipeline CRM
-              </button>
-              <button onClick={() => setActiveTab('guides')} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === 'guides' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-                <span className="text-lg">📚</span> Librairie Guides
               </button>
           </nav>
           <div className="p-4 border-t border-slate-800 flex items-center gap-4">
@@ -153,7 +154,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
               <div className="flex items-center gap-6">
                 <h1 className="text-sm font-black text-slate-900 uppercase italic tracking-tighter">Flux Pipeline</h1>
                 <div className="flex gap-2">
-                    <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Tous</button>
+                    <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Tous ({leads.length})</button>
                     <button onClick={() => setFilterType('buyers')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'buyers' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Acheteurs</button>
                     <button onClick={() => setFilterType('premium')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'premium' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Consulting</button>
                 </div>
@@ -165,25 +166,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
           </header>
 
           <div className="flex-1 flex overflow-hidden">
-              {/* LISTE DES PROSPECTS RÉELLE */}
               <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                  {loading && leads.length === 0 ? (
+                  {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
                       <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="text-[9px] font-black uppercase tracking-widest">Initialisation Andromeda...</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Sync Pipeline...</p>
                     </div>
                   ) : filteredLeads.length === 0 ? (
                     <div className="bg-white rounded-[2rem] p-20 text-center border-2 border-dashed border-slate-200">
                        <p className="text-4xl mb-4">🏜️</p>
                        <p className="font-black uppercase text-sm text-slate-900">Pipeline Vide</p>
-                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-2 italic">Aucun profil correspondant trouvé dans la base.</p>
+                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-2">Aucun prospect trouvé dans la base Profiles.</p>
+                       <button onClick={loadLeads} className="mt-6 text-[10px] font-black text-indigo-600 uppercase underline">Forcer l'actualisation</button>
                     </div>
                   ) : (
                     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-                      <table className="min-w-full divide-y divide-slate-100 table-fixed">
+                      <table className="min-w-full divide-y divide-slate-100">
                           <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                               <tr>
-                                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72">Identité & Projet</th>
+                                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72">Identité (profiles.full_name)</th>
                                   <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Statut Client</th>
                                   <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Andromeda Triage</th>
                                   <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit</th>
@@ -198,19 +199,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                             {(lead.user.full_name || "P").charAt(0).toUpperCase()}
                                           </div>
                                           <div className="flex flex-col min-w-0">
-                                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">{lead.user.full_name}</span>
-                                            <span className="text-[9px] text-indigo-600 font-bold uppercase italic truncate">
-                                              {lead.lastSimulation ? lead.lastSimulation.name : "Aucun Audit Lancé"}
+                                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
+                                              {lead.user.full_name || lead.user.email}
                                             </span>
-                                            <span className="text-[8px] text-slate-400 font-medium truncate mt-0.5 opacity-60">{lead.user.email}</span>
+                                            <span className={`text-[9px] font-bold uppercase italic truncate ${lead.lastSimulation ? 'text-indigo-600' : 'text-slate-300'}`}>
+                                              {lead.lastSimulation ? lead.lastSimulation.name : "En attente d'audit"}
+                                            </span>
                                           </div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                           {(lead.user.consultingValue || 0) > 0 && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest shadow-sm">Premium</span>}
-                                           {(lead.user.purchasedProducts?.length || 0) > 0 && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest shadow-sm">Acheteur</span>}
-                                           {(lead.user.consultingValue || 0) === 0 && (lead.user.purchasedProducts?.length || 0) === 0 && <span className="text-[7px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Prospect</span>}
+                                           {(lead.user.consultingValue || 0) > 0 && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Premium</span>}
+                                           {(lead.user.purchasedProducts?.length || 0) > 0 && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Acheteur</span>}
+                                           {(lead.user.consultingValue || 0) === 0 && (lead.user.purchasedProducts?.length || 0) === 0 && <span className="text-[7px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Lead</span>}
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-center">
@@ -231,7 +233,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                   )}
               </div>
 
-              {/* PANNEAU DE DROITE (DÉTAILS V5.3) */}
+              {/* PANNEAU DE DROITE */}
               <div className="w-[500px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col shadow-2xl">
                   {selectedLead ? (
                     <div className="flex-1 flex flex-col min-h-0">
@@ -247,14 +249,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                       ) : (
                         <div className="p-8 space-y-8 animate-fade-in flex-1 overflow-y-auto scrollbar-hide">
                             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
-                               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                                <div className="relative z-10 flex justify-between items-start">
                                   <div className="space-y-1">
-                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2 italic">IDENTITÉ DÉTECTÉE</p>
+                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2">IDENTITÉ DÉTECTÉE</p>
                                      <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.full_name}</h2>
                                      <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                   </div>
-                                  <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value)} className="bg-white/10 border border-white/20 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white outline-none cursor-pointer shadow-inner">
+                                  <select value={selectedLead.status} onChange={(e) => handleStatusChange(selectedLead.user.id, e.target.value)} className="bg-white/10 border border-white/20 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white outline-none cursor-pointer">
                                        <option value="new" className="text-slate-900">🔴 Nouveau</option>
                                        <option value="contacted" className="text-slate-900">🟠 En Cours</option>
                                        <option value="closed" className="text-slate-900">🟢 Terminé</option>
@@ -267,7 +268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Consulting Encaissé</h4>
                                   <div className="flex items-center gap-2">
                                      <input type="number" value={consultingInput} onChange={(e) => setConsultingInput(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 ring-indigo-500/20 outline-none" placeholder="0 €" />
-                                     <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100 active:scale-95">OK</button>
+                                     <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100">OK</button>
                                   </div>
                                </div>
                                <div className="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100 flex flex-col shadow-sm">

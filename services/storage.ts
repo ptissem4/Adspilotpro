@@ -110,24 +110,26 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      const { data: profiles, error } = await supabase
+      // Fetch profiles without strict jointure first to ensure visibility
+      const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('*, audits(*)')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       return (profiles || []).map(p => {
-        const userAudits = (p.audits || []).sort((a: any, b: any) => 
+        const userAudits = Array.isArray(p.audits) ? p.audits.sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        ) : [];
+        
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
         return {
           user: {
             id: p.id,
             email: p.email || "Email masqué",
-            full_name: p.full_name || p.email,
+            full_name: p.full_name || p.email || "Prospect Inconnu",
             role: p.role || 'user',
             createdAt: p.created_at,
             consultingValue: p.consulting_value || 0,
@@ -147,7 +149,7 @@ export const AdminService = {
         };
       });
     } catch (e) { 
-      console.error("AdminService.getGlobalLeads Error:", e);
+      console.error("Critical Admin Fetch Error:", e);
       return []; 
     }
   },
@@ -155,5 +157,5 @@ export const AdminService = {
   updateLeadConsulting: async (userId: string, value: number) => { await supabase.from('profiles').update({ consulting_value: value }).eq('id', userId); },
   getNewLeadsCount: async (): Promise<number> => { try { const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'new'); return count || 0; } catch (e) { return 0; } },
   getGuides: (): Guide[] => { return DEFAULT_GUIDES; },
-  saveGuide: (guide: Guide) => { console.log("Guide saved"); }
+  saveGuide: (guide: Guide) => { console.log("Guide saved locally"); }
 };
