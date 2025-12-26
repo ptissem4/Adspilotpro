@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        first_name: data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+        full_name: data.user.user_metadata?.first_name || data.user.user_metadata?.full_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
+      firstName: profile?.full_name || profile?.first_name || data.user.user_metadata?.first_name || (isExplicitAdmin ? 'Admin' : 'Utilisateur'),
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -87,7 +87,7 @@ export const AuthService = {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { first_name: firstName } }
+      options: { data: { first_name: firstName, full_name: firstName } }
     });
 
     if (error) throw error;
@@ -100,7 +100,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: email.toLowerCase(),
-        first_name: firstName,
+        full_name: firstName,
         role: role,
         status: 'new'
       });
@@ -265,7 +265,7 @@ export const AdminService = {
     try {
       console.log("🚀 AdminService: Démarrage synchronisation complète...");
       
-      // 1. Récupération des profils
+      // 1. Récupération des profils (avec full_name)
       const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
       if (pError) console.error("❌ Erreur Profiles:", pError.message);
 
@@ -287,15 +287,15 @@ export const AdminService = {
         const userAudits = allAudits.filter(a => a.user_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
-        // On construit l'utilisateur avec une priorité sur les données du profil de la table profiles
+        // On construit l'utilisateur avec une priorité sur les données réelles
         const userObj: UserProfile = {
           id: userId,
           email: profile?.email || (lastAudit?.inputs?.email) || "Email non trouvé",
-          firstName: profile?.first_name || profile?.firstName || (lastAudit?.inputs?.projectName?.split(' ')[0]) || "Prospect Inconnu",
+          firstName: profile?.full_name || profile?.first_name || (lastAudit?.inputs?.projectName?.split(' ')[0]) || "Prospect Inconnu",
           role: (profile?.role as any) || 'user',
           createdAt: profile?.created_at || lastAudit?.created_at || new Date().toISOString(),
-          consultingValue: profile?.consulting_value || profile?.consultingValue || 0,
-          purchasedProducts: profile?.purchased_products || profile?.purchasedProducts || []
+          consultingValue: profile?.consulting_value || 0,
+          purchasedProducts: profile?.purchased_products || []
         };
 
         return {

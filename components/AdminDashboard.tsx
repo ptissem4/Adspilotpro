@@ -204,9 +204,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                           <table className="min-w-full divide-y divide-slate-100 table-fixed">
                               <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                   <tr>
-                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Prospect & Projet</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">CRM Status</th>
-                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Triage Audit</th>
+                                      <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Nom & Email</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Type Client</th>
+                                      <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Audit Score</th>
                                       <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit</th>
                                   </tr>
                               </thead>
