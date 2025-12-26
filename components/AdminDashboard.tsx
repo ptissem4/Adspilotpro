@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { LeadData, UserProfile, SimulationHistory, Guide } from '../types';
 import { AdminService, AuditService } from '../services/storage';
+import { supabase } from '../services/supabase';
 import { ResultsDisplay } from './ResultsDisplay';
 import { Logo } from './Logo';
 
@@ -22,6 +23,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   const [expertNote, setExpertNote] = useState('');
   const [consultingInput, setConsultingInput] = useState<string>('0');
   const [showFullReport, setShowFullReport] = useState(false);
+  const [alert, setAlert] = useState<{msg: string, name: string, score: string} | null>(null);
 
   const loadLeads = async () => {
     setLoading(true);
@@ -38,6 +40,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   useEffect(() => { 
     loadLeads();
     setGuides(AdminService.getGuides());
+
+    // REALTIME SYNC PIPELINE
+    const channel = supabase
+      .channel('admin_pipeline_sync')
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'audits' }, 
+        (payload) => {
+          console.log("⚡ [REALTIME] Audit Table Change:", payload.eventType);
+          loadLeads();
+          if (payload.eventType === 'INSERT') {
+            const newAudit = payload.new;
+            setAlert({
+              msg: "Nouveau Diagnostic Reçu !",
+              name: newAudit.project_name || "Client Inconnu",
+              score: newAudit.emq_score.toString()
+            });
+            setTimeout(() => setAlert(null), 8000);
+          }
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'profiles' }, 
+        (payload) => {
+          console.log("⚡ [REALTIME] Profile Table Change:", payload.eventType);
+          loadLeads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const formatCurrency = (val: number) => 
@@ -143,7 +179,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
+    <div className="min-h-screen bg-slate-100 font-sans flex flex-col md:flex-row h-screen overflow-hidden relative">
+      {/* ALERTE INSTANTANÉE */}
+      {alert && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900 border border-indigo-500/50 rounded-2xl p-6 shadow-2xl animate-fade-in flex items-center gap-6 min-w-[400px]">
+           <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg animate-bounce">🚀</div>
+           <div className="flex-1">
+              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{alert.msg}</p>
+              <h4 className="text-white font-black uppercase text-sm">{alert.name}</h4>
+              <p className="text-[10px] text-slate-400 font-bold italic">Score Andromeda : <span className="text-emerald-400">{alert.score}/10</span></p>
+           </div>
+           <button onClick={() => setAlert(null)} className="text-slate-500 hover:text-white">✕</button>
+        </div>
+      )}
+
       <aside className="w-full md:w-64 bg-slate-900 text-white shrink-0 flex flex-col z-20 shadow-2xl">
           <div className="p-6 border-b border-slate-800">
               <Logo className="invert brightness-0 scale-90 origin-left" />
@@ -188,10 +237,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
               <div className="flex-1 flex overflow-hidden">
                   <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                      {loading ? (
+                      {loading && leads.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
                           <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                          <p className="text-[10px] font-black uppercase tracking-widest">Mise à jour...</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest">Initialisation...</p>
                         </div>
                       ) : filteredLeads.length === 0 ? (
                         <div className="bg-white rounded-[2rem] p-20 text-center border border-slate-200 shadow-sm">
