@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || (isExplicitAdmin ? 'Alexia' : data.user.email),
+        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || data.user.email,
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.full_name || data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || (isExplicitAdmin ? 'Alexia' : 'Utilisateur'),
+      firstName: profile?.full_name || data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || data.user.email!,
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -90,7 +90,7 @@ export const AuthService = {
       options: { 
         data: { 
           full_name: firstName,
-          display_name: firstName, // Ajout pour la consistance prod
+          display_name: firstName,
           first_name: firstName 
         } 
       }
@@ -282,10 +282,13 @@ export const AdminService = {
         
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
+        // Source de vérité : profile.full_name
+        const identityName = profile.full_name || profile.display_name || profile.email || "Utilisateur Anonyme";
+
         const userObj: UserProfile = {
           id: profile.id,
           email: profile.email || "Email masqué",
-          firstName: profile.full_name || profile.display_name || profile.email || "Utilisateur",
+          firstName: identityName,
           role: profile.role || 'user',
           createdAt: profile.created_at,
           consultingValue: profile.consulting_value || 0,
@@ -308,7 +311,7 @@ export const AdminService = {
         };
       });
 
-      // Audits orphelins (rattrapage)
+      // Audits orphelins
       const orphanAudits = allAudits.filter(a => !leads.some(l => l.user.id === a.user_id));
       orphanAudits.forEach(audit => {
          leads.push({

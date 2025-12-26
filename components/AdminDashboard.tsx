@@ -154,7 +154,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       const value = parseFloat(consultingInput) || 0;
       await AdminService.updateLeadConsulting(selectedLead.user.id, value);
       setLeads(prev => prev.map(l => l.user.id === selectedLead.user.id ? { ...l, user: { ...l.user, consultingValue: value } } : l));
-      setSelectedLead(prev => prev ? { ...prev, user: { ...prev.user, consultingValue: value } } : null);
+      setSelectedLead(prev => prev ? { ...prev.user.consultingValue === value ? prev : { ...prev, user: { ...prev.user, consultingValue: value } } } : null);
       alert("Valeur Consulting mise à jour !");
     }
   };
@@ -263,6 +263,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                   {filteredLeads.map((lead) => {
                                     const isBuyer = (lead.user.purchasedProducts?.length || 0) > 0;
                                     const isConsulting = (lead.user.consultingValue || 0) > 0;
+                                    const displayName = lead.user.firstName || lead.user.email;
+                                    
                                     return (
                                       <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
                                           <td className="px-6 py-4">
@@ -271,13 +273,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                                   <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover shrink-0 border border-slate-200 shadow-sm" alt="Alexia" />
                                                 ) : (
                                                   <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
-                                                    {lead.user.firstName?.charAt(0) || "P"}
+                                                    {displayName.charAt(0).toUpperCase()}
                                                   </div>
                                                 )}
                                                 <div className="flex flex-col min-w-0">
                                                   <div className="flex items-center gap-2">
                                                      <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
-                                                        {lead.user.firstName || lead.user.email}
+                                                        {displayName}
                                                      </span>
                                                      {lead.user.email === adminUser.email && <span className="text-[7px] bg-slate-900 text-white px-1.5 py-0.5 rounded font-black">MOI</span>}
                                                   </div>
