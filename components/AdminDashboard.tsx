@@ -55,7 +55,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
             setAlert({
               msg: "Nouveau Diagnostic Reçu !",
               name: newAudit.project_name || "Client Inconnu",
-              score: newAudit.emq_score.toString()
+              score: newAudit.emq_score?.toString() || "0"
             });
             setTimeout(() => setAlert(null), 8000);
           }
@@ -154,7 +154,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       const value = parseFloat(consultingInput) || 0;
       await AdminService.updateLeadConsulting(selectedLead.user.id, value);
       setLeads(prev => prev.map(l => l.user.id === selectedLead.user.id ? { ...l, user: { ...l.user, consultingValue: value } } : l));
-      setSelectedLead(prev => prev ? { ...prev.user.consultingValue === value ? prev : { ...prev, user: { ...prev.user, consultingValue: value } } } : null);
+      setSelectedLead(prev => prev ? { ...prev, user: { ...prev.user, consultingValue: value } } : null);
       alert("Valeur Consulting mise à jour !");
     }
   };
@@ -273,7 +273,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                                   <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover shrink-0 border border-slate-200 shadow-sm" alt="Alexia" />
                                                 ) : (
                                                   <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
-                                                    {displayName.charAt(0).toUpperCase()}
+                                                    {(displayName || "P").charAt(0).toUpperCase()}
                                                   </div>
                                                 )}
                                                 <div className="flex flex-col min-w-0">

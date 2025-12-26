@@ -269,30 +269,39 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
-      const { data: audits, error: aError } = await supabase.from('audits').select('*');
+      // Jointure Supabase pour coller à la structure suggérée par l'utilisateur
+      // On fetch les profils et leurs audits liés
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          audits (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
 
       const allProfiles = profiles || [];
-      const allAudits = audits || [];
 
-      const leads: LeadData[] = allProfiles.map(profile => {
-        const userAudits = allAudits
-          .filter(a => a.user_id === profile.id)
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return allProfiles.map(p => {
+        // Le prospect.profiles.full_name mentionné par l'utilisateur correspond ici à p.full_name
+        // car on part de la table profiles comme source de vérité des leads.
+        const identityName = p.full_name || p.display_name || p.email;
+
+        const userAudits = (p.audits || []).sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
         
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
-        // Source de vérité : profile.full_name
-        const identityName = profile.full_name || profile.display_name || profile.email || "Utilisateur Anonyme";
-
         const userObj: UserProfile = {
-          id: profile.id,
-          email: profile.email || "Email masqué",
-          firstName: identityName,
-          role: profile.role || 'user',
-          createdAt: profile.created_at,
-          consultingValue: profile.consulting_value || 0,
-          purchasedProducts: profile.purchased_products || []
+          id: p.id,
+          email: p.email || "Email masqué",
+          firstName: identityName, // Contient maintenant le nom complet extrait de full_name
+          role: p.role || 'user',
+          createdAt: p.created_at,
+          consultingValue: p.consulting_value || 0,
+          purchasedProducts: p.purchased_products || []
         };
 
         return {
@@ -307,39 +316,11 @@ export const AdminService = {
             results: lastAudit.results,
             verdictLabel: lastAudit.verdict_label
           } : null,
-          status: profile.status || 'new'
+          status: p.status || 'new'
         };
       });
-
-      // Audits orphelins
-      const orphanAudits = allAudits.filter(a => !leads.some(l => l.user.id === a.user_id));
-      orphanAudits.forEach(audit => {
-         leads.push({
-           user: {
-             id: audit.user_id,
-             email: audit.inputs?.email || "Email inconnu",
-             firstName: audit.inputs?.email || "Audit Isolé",
-             role: 'user',
-             createdAt: audit.created_at,
-             consultingValue: 0,
-             purchasedProducts: []
-           },
-           lastSimulation: {
-             id: audit.id,
-             auditId: audit.id.toString().split('-')[0].toUpperCase(),
-             userId: audit.user_id,
-             name: audit.project_name,
-             date: audit.created_at,
-             inputs: audit.inputs,
-             results: audit.results,
-             verdictLabel: audit.verdict_label
-           },
-           status: 'new'
-         });
-      });
-
-      return leads.sort((a, b) => new Date(b.user.createdAt).getTime() - new Date(a.user.createdAt).getTime());
     } catch (e) { 
+      console.error("AdminService.getGlobalLeads Error:", e);
       return []; 
     }
   },
