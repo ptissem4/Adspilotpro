@@ -61,7 +61,7 @@ export const AuthService = {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email?.toLowerCase(),
-        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || data.user.email,
+        full_name: data.user.user_metadata?.full_name || data.user.email,
         role: role,
         status: 'new'
       });
@@ -70,7 +70,7 @@ export const AuthService = {
     const user: UserProfile = {
       id: data.user.id,
       email: data.user.email!,
-      firstName: profile?.full_name || data.user.user_metadata?.full_name || data.user.user_metadata?.display_name || data.user.email!,
+      firstName: profile?.full_name || data.user.user_metadata?.full_name || data.user.email!,
       role: role as 'admin' | 'user',
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
@@ -89,9 +89,7 @@ export const AuthService = {
       password,
       options: { 
         data: { 
-          full_name: firstName,
-          display_name: firstName,
-          first_name: firstName 
+          full_name: firstName
         } 
       }
     });
@@ -269,24 +267,17 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // Jointure Supabase pour coller à la structure suggérée par l'utilisateur
-      // On fetch les profils et leurs audits liés
+      // On fetch d'abord tous les profils (LEFT JOIN implicite sur audits)
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          audits (*)
-        `)
+        .select('*, audits(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const allProfiles = profiles || [];
-
-      return allProfiles.map(p => {
-        // Le prospect.profiles.full_name mentionné par l'utilisateur correspond ici à p.full_name
-        // car on part de la table profiles comme source de vérité des leads.
-        const identityName = p.full_name || p.display_name || p.email;
+      return (profiles || []).map(p => {
+        // Source de vérité : profiles.full_name
+        const identityName = p.full_name || p.email;
 
         const userAudits = (p.audits || []).sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -294,18 +285,16 @@ export const AdminService = {
         
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
-        const userObj: UserProfile = {
-          id: p.id,
-          email: p.email || "Email masqué",
-          firstName: identityName, // Contient maintenant le nom complet extrait de full_name
-          role: p.role || 'user',
-          createdAt: p.created_at,
-          consultingValue: p.consulting_value || 0,
-          purchasedProducts: p.purchased_products || []
-        };
-
         return {
-          user: userObj,
+          user: {
+            id: p.id,
+            email: p.email || "Email masqué",
+            firstName: identityName, // On injecte le nom complet ici
+            role: p.role || 'user',
+            createdAt: p.created_at,
+            consultingValue: p.consulting_value || 0,
+            purchasedProducts: p.purchased_products || []
+          },
           lastSimulation: lastAudit ? {
             id: lastAudit.id,
             auditId: lastAudit.id.toString().split('-')[0].toUpperCase(),
