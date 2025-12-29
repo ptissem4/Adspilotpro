@@ -14,6 +14,19 @@ interface LandingPageProps {
   newLeadsCount?: number;
 }
 
+const ExpertAvatar = ({ className = "w-10 h-10" }) => (
+  <div className={`relative ${className} group shrink-0`}>
+    <div className="absolute inset-0 bg-indigo-500/20 rounded-[3rem] blur-xl group-hover:bg-indigo-500/40 transition-all"></div>
+    <div className="relative w-full h-full bg-slate-800 rounded-[3rem] border-4 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.5)] flex items-center justify-center overflow-hidden">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-1/2 h-1/2">
+        <path d="M12 11C13.6569 11 15 9.65685 15 8C15 6.34315 13.6569 5 12 5C10.3431 5 9 6.34315 9 8C9 9.65685 10.3431 11 12 11Z" fill="currentColor" className="text-indigo-400" />
+        <path d="M12 13C9.23858 13 7 15.2386 7 18V19H17V18C17 15.2386 14.7614 13 12 13Z" fill="currentColor" className="text-indigo-400" />
+        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="0.5" className="text-indigo-500/30" />
+      </svg>
+    </div>
+  </div>
+);
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, onLogin, onDashboard, currentUser, newLeadsCount = 0 }) => {
   return (
     <div className="min-h-screen font-sans text-slate-900 bg-white selection:bg-indigo-100 scroll-smooth">
@@ -123,15 +136,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
               <h4 className="text-xl font-black uppercase tracking-widest text-indigo-400 mb-6 italic">Architecture Signal</h4>
               <ul className="space-y-4">
                  <li className="flex gap-4 items-center">
-                    <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">1</div>
+                    <div className="w-8 h-8 bg-indigo-50/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">1</div>
                     <p className="text-sm font-bold uppercase tracking-tight">Installation CAPI Server-Side</p>
                  </li>
                  <li className="flex gap-4 items-center">
-                    <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">2</div>
+                    <div className="w-8 h-8 bg-indigo-50/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">2</div>
                     <p className="text-sm font-bold uppercase tracking-tight">Nettoyage du Flux Data (GTM)</p>
                  </li>
                  <li className="flex gap-4 items-center">
-                    <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">3</div>
+                    <div className="w-8 h-8 bg-indigo-50/20 rounded-lg flex items-center justify-center text-indigo-400 font-black">3</div>
                     <p className="text-sm font-bold uppercase tracking-tight">Score EMQ &gt; 8/10 Requis</p>
                  </li>
               </ul>
@@ -199,15 +212,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
       {/* 4. LE MOT DE L'EXPERTE */}
       <section className="py-24 bg-slate-900 text-white relative overflow-hidden border-t border-slate-800">
          <div className="relative z-10 max-w-4xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
-            <div className="w-40 h-40 md:w-56 md:h-56 rounded-[3rem] overflow-hidden border-4 border-white/10 shrink-0 shadow-2xl rotate-3">
-               <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Alexia Expert" className="w-full h-full object-cover" />
-            </div>
+            <ExpertAvatar className="w-40 h-40 md:w-56 md:h-56 rotate-3" />
             <div className="text-center md:text-left">
                <div className="inline-block px-4 py-1 bg-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">Expertise 10M€+ Spend</div>
-               <h3 className="text-3xl font-black mb-6 italic leading-tight uppercase tracking-tighter">
+               <h3 className="text-3xl font-black mb-6 italic leading-tight uppercase tracking-tighter text-white">
                  "Après avoir géré des millions d'euros d'investissements publicitaires, j'ai condensé mon expertise dans AdsPilot Pro pour vous offrir la clarté nécessaire au scaling."
                </h3>
-               <p className="text-indigo-400 font-black uppercase tracking-widest text-sm">— Alexia, Fondatrice AdsPilot Pro</p>
+               <p className="text-indigo-400 font-black uppercase tracking-widest text-sm">— Alexia Kebir, Architecte Expert</p>
             </div>
          </div>
       </section>

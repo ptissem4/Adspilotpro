@@ -6,6 +6,7 @@ import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 import { AuditExplainer } from './AuditExplainer';
 import { Boutique } from './Boutique';
+import { ExpertAvatar } from './UserDashboard';
 
 interface DashboardProps {
   user: UserProfile;
@@ -37,7 +38,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
   useEffect(() => {
     loadHistory();
 
-    // TEMPS RÉEL : Écoute des changements sur la table audits pour cet utilisateur
     const channel = supabase
       .channel(`audits_user_${user.id}`)
       .on(
@@ -49,10 +49,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
           filter: `user_id=eq.${user.id}`
         }, 
         (payload) => {
-          console.log("🚀 Temps réel : Changement détecté !", payload);
-          loadHistory(); // Recharger proprement les données
-          if (payload.eventType === 'INSERT' && onNotification) {
-            onNotification("Nouvel audit synchronisé !");
+          if (payload.eventType === 'DELETE') {
+             console.log("📡 Real-time: Suppression détectée sur le serveur.", payload.old.id);
+             setHistory(prev => prev.filter(s => s.id !== payload.old.id));
+          } else {
+             loadHistory();
           }
         }
       )
@@ -63,14 +64,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
     };
   }, [user.id]);
 
-  const latestSim = useMemo(() => history[0], [history]);
-
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('Voulez-vous supprimer cet audit ?')) {
-      await AuditService.deleteAudit(id);
-      setHistory(prev => prev.filter(s => s.id !== id));
-      if (onNotification) onNotification("Audit supprimé.");
+  const handleDelete = async (id: string) => {
+    setLoading(true);
+    const { error } = await supabase.from('audits').delete().match({ id: id });
+    
+    if (error) {
+      console.error('Erreur Supabase:', error);
+      alert('Erreur: ' + error.message);
+      setLoading(false);
+    } else {
+      // Mise à jour immédiate de l'écran
+      setHistory(prev => prev.filter(a => a.id !== id));
+      if (onNotification) onNotification("Nettoyage terminé, Alexia.");
+      setLoading(false);
     }
   };
 
@@ -94,17 +100,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                   <button onClick={() => setActiveTab('boutique')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'boutique' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>💎 Boutique</button>
                </div>
              </div>
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-6">
                <button onClick={loadHistory} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-30">
                   <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                </button>
-               <button onClick={onLogout} className="text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border px-4 py-2 rounded-lg">Déconnexion</button>
+               <div className="flex items-center gap-3 border-l pl-6">
+                  <ExpertAvatar className="w-8 h-8" neon={true} />
+                  <button onClick={onLogout} className="text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border px-4 py-2 rounded-lg transition-colors">Déconnexion</button>
+               </div>
              </div>
          </div>
       </nav>
 
       <main className="flex-1 overflow-y-auto">
-        {activeTab === 'guide' ? <AuditExplainer onBack={() => setActiveTab('history')} inputs={latestSim?.inputs} results={latestSim?.results} /> : activeTab === 'boutique' ? <Boutique onNotification={onNotification} /> : (
+        {activeTab === 'guide' ? <AuditExplainer onBack={() => setActiveTab('history')} inputs={history[0]?.inputs} results={history[0]?.results} /> : activeTab === 'boutique' ? <Boutique onNotification={onNotification} /> : (
           <div className="max-w-6xl mx-auto px-4 py-16 animate-fade-in">
              <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                  <div>
@@ -120,27 +129,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                     <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Synchronisation Database...</p>
                  </div>
              ) : history.length === 0 ? (
-                 <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-200 shadow-sm">
-                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-4xl mx-auto mb-8 shadow-inner">📋</div>
-                    <h3 className="text-2xl font-black text-slate-900 uppercase mb-4 tracking-tight">Aucun rapport disponible</h3>
-                    <p className="text-slate-500 mb-10 italic max-w-sm mx-auto leading-relaxed">Lancez votre premier diagnostic pour transformer vos données Meta en une stratégie de croissance claire.</p>
+                 <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-200 shadow-sm flex flex-col items-center">
+                    <ExpertAvatar className="w-20 h-20 mb-8" neon={true} />
+                    <h3 className="text-2xl font-black text-slate-900 uppercase mb-4 tracking-tight">Aucun diagnostic pour le moment</h3>
+                    <p className="text-slate-500 mb-10 italic max-w-sm mx-auto leading-relaxed">L'Architecte attend votre première créative pour lancer l'analyse Andromeda.</p>
                     <button onClick={onNewSimulation} className="bg-indigo-600 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:bg-slate-900 transition-all">Lancer mon Diagnostic &rarr;</button>
                  </div>
              ) : (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
                      {history.map((sim) => {
                          const style = getVerdictStyle(sim.verdictLabel);
                          const emq = parseFloat(sim.inputs?.emqScore) || 0;
                          return (
                            <div key={sim.id} onClick={() => onLoadSimulation(sim)} className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl cursor-pointer group relative overflow-hidden transition-all hover:-translate-y-2 flex flex-col">
-                               {/* Badge Verdict Premium */}
                                <div className={`absolute top-0 left-0 right-0 h-1 ${style.bg.replace('bg-', 'bg-')}`}></div>
                                <div className="flex justify-between items-start mb-6">
                                    <div className={`px-3 py-1.5 rounded-full border ${style.bg} ${style.border} ${style.text} flex items-center gap-2`}>
                                       <span className="text-sm">{style.icon}</span>
                                       <span className="text-[9px] font-black uppercase tracking-widest">{style.label}</span>
                                    </div>
-                                   <button onClick={(e) => handleDelete(sim.id, e)} className="text-slate-300 hover:text-red-500 p-1 transition-colors">✕</button>
+                                   <button 
+                                     onClick={(e) => { e.stopPropagation(); handleDelete(sim.id); }} 
+                                     className="relative z-[60] w-10 h-10 rounded-xl bg-slate-50 text-slate-300 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all shadow-sm active:scale-90 border border-slate-100"
+                                     title="Supprimer l'audit"
+                                   >
+                                     <span className="text-xl font-black leading-none">✕</span>
+                                   </button>
                                </div>
 
                                <div className="mb-8">
@@ -152,7 +166,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                                  </div>
                                </div>
 
-                               {/* EMQ Score Visual */}
                                <div className="mb-8 space-y-2">
                                   <div className="flex justify-between items-center">
                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Signal Andromeda</span>
@@ -172,11 +185,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CPA</p>
                                       <p className="text-xl font-black text-slate-900 italic tracking-tighter">{sim.inputs?.currentCpa || '0'}€</p>
                                    </div>
-                               </div>
-                               
-                               {/* Hint on hover */}
-                               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Ouvrir le Rapport &rarr;</span>
                                </div>
                            </div>
                          );

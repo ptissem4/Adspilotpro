@@ -3,11 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * 🛠️ CONFIGURATION SUPABASE
- * Collez vos clés ici pour activer le SaaS pour tous.
  */
 const MANUAL_URL = "https://jgmiexccumfeglryjywj.supabase.co"; 
 const MANUAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWlleGNjdW1mZWdscnlqeXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1NTM3NDksImV4cCI6MjA4MjEyOTc0OX0.SHhjCOFbDctlt1ZnFczxk-M94Njsaaq3EgVUiZCiTtA";
-/** --------------------------------------------------------- */
+
+/**
+ * 🔐 SÉCURITÉ ADMIN (SQL Editor de Supabase)
+ * Exécutez ces lignes pour que l'Admin puisse tout voir :
+ * 
+ * -- 1. Autoriser la lecture de tous les profils pour les admins
+ * CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
+ *   (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+ * );
+ * 
+ * -- 2. Autoriser la lecture de tous les audits pour les admins
+ * CREATE POLICY "Admins can view all audits" ON audits FOR SELECT USING (
+ *   (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+ * );
+ * 
+ * -- 3. Si RLS bloque encore, désactivez temporairement pour tester :
+ * -- ALTER TABLE audits DISABLE ROW LEVEL SECURITY;
+ * -- ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ */
 
 const getEnvValue = (key: string): string => {
   if (typeof window === 'undefined') return '';

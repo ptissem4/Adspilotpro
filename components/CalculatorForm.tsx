@@ -24,7 +24,16 @@ const TOOLTIPS: Record<string, string> = {
   currentRoas: "Votre ROAS actuel affiché sur Meta.",
   currentCtr: "Le taux de clic sur vos publicités.",
   currentBudget: "Votre investissement publicitaire total par mois.",
-  emqScore: "L'IA Andromeda de Meta nécessite un signal de 8/10 pour fonctionner à pleine puissance. En dessous, votre ciblage est aléatoire."
+  emqScore: "L'IA Andromeda de Meta nécessite un signal de 8/10 pour fonctionner à pleine puissance.",
+  convRate: "Taux de conversion de votre boutique ou tunnel de vente.",
+  vslRate: "Pourcentage de personnes regardant votre vidéo de vente jusqu'au bout.",
+  hookRate: "Taux de rétention après les 3 premières secondes de vos vidéos.",
+  upsellRate: "Taux d'adoption de vos offres complémentaires.",
+  closingRate: "Taux de transformation de vos appels de vente en clients.",
+  stopRate: "Taux d'arrêt sur vos visuels dans le fil d'actualité.",
+  churnRate: "Taux d'attrition mensuel de vos clients récurrents.",
+  cpl: "Coût par Prospect (Lead).",
+  cpb: "Coût par Rendez-vous (Booking)."
 };
 
 const CREATIVE_FORMATS = [
@@ -43,37 +52,68 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({
   nicheData
 }) => {
   const isLive = mode === 'live';
+
+  const isEcom = inputs.niche === 'fashion' || inputs.niche === 'beauty' || inputs.niche === 'food' || inputs.niche === 'home';
+  const isInfo = inputs.niche === 'info' || inputs.niche === 'saas';
+  const isService = inputs.niche === 'realestate' || inputs.niche === 'finance';
   
-  const sections = useMemo(() => [
-    {
-      id: 'section-1',
-      title: "1. Modèle Économique",
-      fields: [
-        { id: 'pmv', label: "Prix Moyen (AOV)", suffix: "€" },
-        { id: 'ltv', label: "LTV (12m)", suffix: "€" },
-        { id: 'margin', label: "Marge Brute", suffix: "%" }
-      ]
-    },
-    {
-      id: 'section-2',
-      title: "2. Objectifs",
-      fields: [
-        { id: 'targetRoas', label: "ROAS Cible", suffix: "" },
-        { id: 'targetVolume', label: "Volume Cible", suffix: "" }
-      ]
-    },
-    {
-      id: 'section-3',
-      title: "3. Metrics Meta (Andromeda)",
-      fields: [
-        { id: 'currentCpa', label: "CPA Actuel", suffix: "€" },
-        { id: 'currentRoas', label: "ROAS Actuel", suffix: "" },
-        { id: 'currentCtr', label: "CTR Actuel", suffix: "%" },
-        { id: 'currentBudget', label: "Budget Mensuel", suffix: "€" },
-        { id: 'emqScore', label: "Score EMQ", suffix: "/10" }
-      ]
+  const sections = useMemo(() => {
+    const base = [
+      {
+        id: 'section-1',
+        title: "1. Modèle Économique",
+        fields: [
+          { id: 'pmv', label: "Prix Moyen (AOV)", suffix: "€" },
+          { id: 'ltv', label: "LTV (12m)", suffix: "€" },
+          { id: 'margin', label: "Marge Brute", suffix: "%" }
+        ]
+      },
+      {
+        id: 'section-2',
+        title: "2. Objectifs",
+        fields: [
+          { id: 'targetRoas', label: "ROAS Cible", suffix: "" },
+          { id: 'targetVolume', label: "Volume Cible", suffix: "" }
+        ]
+      },
+      {
+        id: 'section-3',
+        title: "3. Metrics Meta (Andromeda)",
+        fields: [
+          { id: 'currentCpa', label: "CPA Actuel", suffix: "€" },
+          { id: 'currentRoas', label: "ROAS Actuel", suffix: "" },
+          { id: 'currentCtr', label: "CTR Actuel", suffix: "%" },
+          { id: 'currentBudget', label: "Budget Mensuel", suffix: "€" },
+          { id: 'emqScore', label: "Score EMQ", suffix: "/10" }
+        ]
+      }
+    ];
+
+    const advancedFields = [];
+    if (isEcom) {
+      advancedFields.push({ id: 'convRate', label: "Taux Conv. Store", suffix: "%" });
+    } else if (isInfo) {
+      advancedFields.push({ id: 'cpl', label: "Coût / Lead (CPL)", suffix: "€" });
+      advancedFields.push({ id: 'vslRate', label: "Taux VSL/Webinar", suffix: "%" });
+      advancedFields.push({ id: 'hookRate', label: "Hook Rate (3s)", suffix: "%" });
+      advancedFields.push({ id: 'upsellRate', label: "Taux Upsell", suffix: "%" });
+    } else if (isService) {
+      advancedFields.push({ id: 'cpb', label: "Coût / RDV (CPB)", suffix: "€" });
+      advancedFields.push({ id: 'closingRate', label: "Taux Closing", suffix: "%" });
+      advancedFields.push({ id: 'stopRate', label: "Stop Rate (Scroll)", suffix: "%" });
+      advancedFields.push({ id: 'churnRate', label: "Taux Attrition", suffix: "%" });
     }
-  ], []);
+
+    if (advancedFields.length > 0) {
+      base.push({
+        id: 'section-4',
+        title: "4. Metrics Avancées de Conversion",
+        fields: advancedFields
+      });
+    }
+
+    return base;
+  }, [inputs.niche, isEcom, isInfo, isService]);
 
   const handleFormatToggle = (formatId: string) => {
     const current = inputs.creativeFormats || [];
@@ -108,7 +148,7 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({
               key={f.id}
               id={f.id} 
               label={f.label} 
-              value={(inputs as any)[f.id]} 
+              value={(inputs as any)[f.id] || ''} 
               onChange={(v) => onInputChange(f.id as any, v)} 
               suffix={f.suffix} 
               tooltip={TOOLTIPS[f.id]}
@@ -137,9 +177,6 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({
               </button>
             ))}
          </div>
-         <p className="mt-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest italic">
-           * Meta recommande au moins 2 formats pour le scaling.
-         </p>
       </div>
     </div>
   );

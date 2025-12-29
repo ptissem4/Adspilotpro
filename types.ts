@@ -11,18 +11,27 @@ export interface CalculatorInputs {
   emqScore: string;
   niche: string;
   ltv: string;
-  creativeFormats: string[]; // Nouveau champ Andromeda
+  creativeFormats: string[];
   dataSource: 'manual' | 'api';
   email?: string;
   projectName?: string;
   notes?: string;
-}
-
-export interface NicheData {
-  id: string;
-  label: string;
-  benchmarkRoas: number;
-  benchmarkCtr: number;
+  // Variables Hardcore
+  cpm?: string;
+  cogs?: string; // Coût produit
+  shippingCost?: string;
+  retentionRate?: string; // % rachat
+  productUrl?: string;
+  shopName?: string;
+  // Champs spécifiques Audit Créatif
+  auditType?: 'pnl' | 'creative';
+  type?: 'ANDROMEDA' | 'CREATIVE';
+  name?: string;
+  checklistScore?: number;
+  creativeHookScore?: number;
+  creativeOfferScore?: number;
+  creativeDesirabilityScore?: number;
+  creativeImageUrl?: string;
 }
 
 export interface CalculationResults {
@@ -47,31 +56,31 @@ export interface CalculationResults {
   margeInitiale: number;
   provisionParClient: number;
   tresorerieLatenteHebdo: number;
-  andromedaOptimized: boolean; // Flag Andromeda
-  creativeDiversityScore: number; // 0-100
+  andromedaOptimized: boolean;
+  creativeDiversityScore: number;
+  // Champs Hardcore
+  realNetProfit?: number;
+  breakevenRoas?: number;
+  estimatedCtr?: number;
 }
 
 export interface UserProfile {
   id: string;
   email: string;
-  full_name?: string; // Correspondance exacte Supabase
-  firstName?: string; // Fallback pour compatibilité
+  full_name?: string;
+  firstName?: string;
   name?: string;
   role: 'user' | 'admin';
   createdAt: string;
   purchasedProducts?: string[]; 
   consultingValue?: number;
   isLocal?: boolean;
-}
-
-export interface Guide {
-  id: string;
-  title: string;
-  price: string;
-  description: string;
-  link: string;
-  icon: string;
-  recommendationTrigger: 'signal' | 'ltv' | 'scaling';
+  // Données Business
+  shop_name?: string;
+  shop_url?: string;
+  shop_logo?: string;
+  niche?: string;
+  target_cpa?: number;
 }
 
 export interface SimulationHistory {
@@ -84,10 +93,27 @@ export interface SimulationHistory {
   results: CalculationResults;
   verdictLabel: string;
   notes?: string;
+  type: 'ANDROMEDA' | 'CREATIVE';
+}
+
+export interface NicheData {
+  id: string;
+  label: string;
+  benchmarkRoas: number;
+  benchmarkCtr: number;
 }
 
 export interface LeadData {
   user: UserProfile;
   lastSimulation: SimulationHistory | null;
-  status: 'new' | 'contacted' | 'closed';
+  status: 'new' | 'contacted' | 'closed' | 'buyer';
+}
+
+export interface Guide {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  icon: string;
+  link: string;
 }

@@ -9,6 +9,7 @@ import { SaveAuditModal } from './components/SaveAuditModal';
 import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Boutique } from './components/Boutique';
+import { UserDashboard, ExpertAvatar } from './components/UserDashboard';
 import { AuthService, AdminService, AuditService } from './services/storage';
 import { Logo } from './components/Logo';
 
@@ -26,13 +27,18 @@ const NICHE_DATA: NicheData[] = [
 ];
 
 export default function App() {
-  const [appMode, setAppMode] = useState<'home' | 'selection' | 'calculator' | 'analyzing' | 'results' | 'dashboard' | 'admin_dashboard' | 'boutique'>('home');
+  const [appMode, setAppMode] = useState<'home' | 'selection' | 'calculator' | 'analyzing' | 'results' | 'dashboard' | 'admin_dashboard' | 'boutique' | 'user_dashboard'>('home');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(AuthService.getCurrentUser());
   const [newLeadsCount, setNewLeadsCount] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [currentAuditId, setCurrentAuditId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [authIntent, setAuthIntent] = useState<'dashboard' | 'audit'>('dashboard');
+  const [latestAudit, setLatestAudit] = useState<SimulationHistory | null>(null);
+
+  useEffect(() => {
+    (window as any).setAppMode = (mode: any) => setAppMode(mode);
+  }, []);
 
   const [inputs, setInputs] = useState<CalculatorInputs>({
     pmv: '', margin: '', targetRoas: '', targetVolume: '', currentCpa: '',
@@ -45,8 +51,13 @@ export default function App() {
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'admin') {
-      AdminService.getNewLeadsCount().then(setNewLeadsCount).catch(() => {});
+    if (currentUser) {
+      if (currentUser.role === 'admin') {
+        AdminService.getNewLeadsCount().then(setNewLeadsCount).catch(() => {});
+      }
+      AuditService.getAuditHistory(currentUser.id).then(history => {
+        if (history.length > 0) setLatestAudit(history[0]);
+      });
     }
   }, [currentUser]);
 
@@ -122,22 +133,40 @@ export default function App() {
     setTimeout(() => setAppMode('results'), 1500);
   };
 
-  const handleSaveAuditLocally = async (projectName: string) => {
+  const handleLogout = () => {
+    AuthService.logout();
+    setCurrentUser(null);
+    setAppMode('home');
+  };
+
+  const handleSaveAuditLocally = async (name: string) => {
     if (!currentUser) {
       showNotification("Session expirée. Veuillez vous reconnecter.", "error");
       setAppMode('home');
       return;
     }
 
-    const updatedInputs = { ...inputs, projectName };
+    const updatedInputs: CalculatorInputs = { 
+      ...inputs, 
+      projectName: name,
+      name: name,
+      type: 'ANDROMEDA'
+    };
+    
     setIsSaving(true);
     try {
       const verdict = calculateVerdict(updatedInputs, results);
-      await AuditService.saveAudit(currentUser, updatedInputs, results, verdict);
+      const savedSim = await AuditService.saveAudit(currentUser, updatedInputs, results, verdict, 'ANDROMEDA', name);
+      setLatestAudit(savedSim);
       setIsSaving(false);
       setShowSaveModal(false);
-      showNotification("Audit enregistré !");
-      setAppMode('dashboard');
+      showNotification("Diagnostic archivé avec succès, Alexia !");
+      setAppMode('user_dashboard');
+      // On s'assure d'être sur l'onglet historique
+      setTimeout(() => {
+          const ev = new CustomEvent('setDashboardTab', { detail: 'history' });
+          window.dispatchEvent(ev);
+      }, 100);
     } catch (e) {
       setIsSaving(false);
       showNotification("Erreur de sauvegarde", "error");
@@ -150,7 +179,7 @@ export default function App() {
     if (authIntent === 'audit') {
       setAppMode('selection');
     } else {
-      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'dashboard');
+      setAppMode(user.role === 'admin' ? 'admin_dashboard' : 'user_dashboard');
     }
   };
 
@@ -162,7 +191,7 @@ export default function App() {
       await AuditService.updateAudit(currentAuditId, {
         inputs,
         results,
-        verdictLabel: verdict,
+        verdict_label: verdict,
         date: new Date().toISOString()
       });
       showNotification("Audit mis à jour !");
@@ -185,12 +214,26 @@ export default function App() {
   const renderContent = () => {
     if (appMode === 'home') return (
       <div className="flex-1 overflow-y-auto bg-white">
-        <LandingPage onStart={handleStartIntent} onBoutique={() => setAppMode('boutique')} onLogin={() => { setAuthIntent('dashboard'); setShowAuthModal(true); }} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard')} newLeadsCount={newLeadsCount} />
+        <LandingPage onStart={handleStartIntent} onBoutique={() => setAppMode('boutique')} onLogin={() => { setAuthIntent('dashboard'); setShowAuthModal(true); }} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'user_dashboard')} newLeadsCount={newLeadsCount} />
       </div>
     );
 
-    if (appMode === 'admin_dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-100"><AdminDashboard adminUser={currentUser} onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} /></div>;
-    if (appMode === 'dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-50"><Dashboard user={currentUser} onLoadSimulation={(sim) => { setInputs(sim.inputs); setCurrentAuditId(sim.id); setAppMode('results'); }} onNewSimulation={() => { setCurrentAuditId(null); setAppMode('selection'); }} onLogout={() => { AuthService.logout(); setCurrentUser(null); setAppMode('home'); }} onNotification={showNotification} onGoToBoutique={() => setAppMode('boutique')} /></div>;
+    if (appMode === 'admin_dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-100"><AdminDashboard adminUser={currentUser} onLogout={handleLogout} /></div>;
+    
+    if (appMode === 'user_dashboard' && currentUser) return (
+      <div className="flex-1 h-full overflow-y-auto bg-slate-950">
+        <UserDashboard 
+          user={currentUser} 
+          latestAudit={latestAudit} 
+          onNewAudit={() => setAppMode('selection')}
+          onLogout={handleLogout}
+          onConsulting={() => window.location.href='mailto:shopiflight@gmail.com?subject=Consulting Stratégique Cockpit'}
+          onNotification={showNotification}
+        />
+      </div>
+    );
+
+    if (appMode === 'dashboard' && currentUser) return <div className="flex-1 h-full overflow-hidden bg-slate-50"><Dashboard user={currentUser} onLoadSimulation={(sim) => { setInputs(sim.inputs); setCurrentAuditId(sim.id); setAppMode('results'); }} onNewSimulation={() => { setCurrentAuditId(null); setAppMode('selection'); }} onLogout={handleLogout} onNotification={showNotification} onGoToBoutique={() => setAppMode('boutique')} /></div>;
 
     if (appMode === 'boutique') return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -198,14 +241,6 @@ export default function App() {
         <main className="flex-1 overflow-y-auto scroll-smooth"><Boutique onNotification={showNotification} /></main>
       </div>
     );
-
-    // If unauthenticated trying to access calculator, redirect to auth
-    if (!currentUser && (appMode === 'selection' || appMode === 'calculator' || appMode === 'results')) {
-      setAuthIntent('audit');
-      setShowAuthModal(true);
-      setAppMode('home');
-      return null;
-    }
 
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -234,14 +269,20 @@ export default function App() {
   };
 
   const renderNav = () => (
-    <nav className="h-20 bg-white border-b border-slate-200 px-6 md:px-12 flex items-center justify-between shrink-0 z-50 no-print">
+    <nav className={`h-20 border-b px-6 md:px-12 flex items-center justify-between shrink-0 z-50 no-print transition-colors ${appMode === 'user_dashboard' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
       <div className="flex items-center gap-6"><button onClick={() => setAppMode('home')} className="hover:scale-105 transition-transform"><Logo iconOnly className="scale-75" /></button></div>
       <div className="flex items-center gap-4">
-        <button onClick={() => setAppMode('boutique')} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600">💎 Boutique</button>
+        <button onClick={() => setAppMode('boutique')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${appMode === 'user_dashboard' ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-600'}`}>💎 Boutique</button>
         {currentUser ? (
-          <button onClick={() => setAppMode(currentUser.role === 'admin' ? 'admin_dashboard' : 'dashboard')} className="bg-slate-50 text-slate-900 border border-slate-200 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
-            {currentUser.role === 'admin' ? '👑 Admin' : '👤 Espace Client'}
-          </button>
+          <div className="flex items-center gap-4">
+             <button onClick={() => setAppMode('user_dashboard')} className={`hidden md:block px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${appMode === 'user_dashboard' ? 'text-indigo-400 font-black underline decoration-2' : 'text-slate-400 hover:text-indigo-600'}`}>🚀 Cockpit Stratégique</button>
+             <div className="flex items-center gap-3">
+                <button onClick={() => setAppMode(currentUser.role === 'admin' ? 'admin_dashboard' : 'dashboard')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${appMode === 'user_dashboard' ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-slate-50 text-slate-900 border border-slate-200 hover:bg-slate-100'}`}>
+                  {currentUser.role === 'admin' ? '👑 Admin' : '📊 Archives'}
+                </button>
+                <ExpertAvatar className="w-8 h-8" neon={appMode === 'user_dashboard'} />
+             </div>
+          </div>
         ) : (
           <button onClick={() => { setAuthIntent('dashboard'); setShowAuthModal(true); }} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Connexion</button>
         )}
@@ -250,8 +291,13 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden relative">
-      {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[1000] px-8 py-5 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-2xl bg-slate-900 text-white border border-slate-700 animate-fade-in">{toast.msg}</div>}
+    <div className={`h-screen flex flex-col overflow-hidden relative ${appMode === 'user_dashboard' ? 'bg-slate-950' : 'bg-slate-50'}`}>
+      {toast && (
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-[1.5rem] shadow-2xl bg-slate-900 text-white border border-slate-700 animate-fade-in flex items-center gap-4">
+          <ExpertAvatar className="w-8 h-8" neon={false} />
+          <span className="font-black text-[11px] uppercase tracking-widest">{toast.msg}</span>
+        </div>
+      )}
       {showAuthModal && <AuthGate onAuthenticated={handleAuthenticated} onCancel={() => setShowAuthModal(false)} defaultView={authIntent === 'audit' ? 'signup' : 'login'} />}
       {showSaveModal && <SaveAuditModal initialName={inputs.projectName} loading={isSaving} isGuest={!currentUser} onCancel={() => setShowSaveModal(false)} onSave={handleSaveAuditLocally} />}
       {renderContent()}
