@@ -27,7 +27,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     setLoading(true);
     try {
       const data = await AdminService.getGlobalLeads();
-      console.log("AdminDashboard - Raw Leads Loaded:", data.length);
       setLeads(data);
     } catch (e) {
       console.error("Dashboard Sync Error:", e);
@@ -38,7 +37,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   useEffect(() => { 
     loadLeads();
-    const channel = supabase.channel('admin_pipeline_sync').on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadLeads()).subscribe();
+    // Écoute des changements sur TOUTE la table profiles (incluant les updates du Webhook)
+    const channel = supabase
+      .channel('admin_pipeline_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        console.log("Real-time Update Received:", payload);
+        loadLeads();
+      })
+      .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
@@ -50,7 +56,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     const inputs = selectedLead.lastSimulation.inputs;
     const emq = parseFloat(inputs.emqScore) || 0;
     const budget = parseFloat(inputs.currentBudget) || 0;
-
     if (emq < 6) return { title: "Signal Critique", text: `Pixel aveugle (${emq}/10). Dépense ${formatCurrency(budget)}/mois au hasard. Priorité : SOS Signal.` };
     return { title: "Scale Prêt", text: "Metrics au vert. Structure prête pour montée en charge verticale." };
   }, [selectedLead]);
@@ -61,7 +66,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       const nameMatch = (lead.user.full_name || "").toLowerCase().includes(term);
       const emailMatch = (lead.user.email || "").toLowerCase().includes(term);
       const matchesSearch = nameMatch || emailMatch;
-      
       if (filterType === 'buyers') return matchesSearch && (lead.user.purchasedProducts?.length || 0) > 0;
       if (filterType === 'premium') return matchesSearch && (lead.user.consultingValue || 0) > 0;
       return matchesSearch;
@@ -115,7 +119,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
-      {/* SIDEBAR V5.3 */}
       <aside className="w-full md:w-64 bg-slate-900 text-white shrink-0 flex flex-col z-20 shadow-2xl">
           <div className="p-6 border-b border-slate-800">
               <Logo className="invert brightness-0 scale-90 origin-left" />
@@ -225,7 +228,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                   )}
               </div>
 
-              {/* PANNEAU DE DROITE (DÉTAILS V5.3) */}
               <div className="w-[500px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col shadow-2xl">
                   {selectedLead ? (
                     <div className="flex-1 flex flex-col min-h-0">
