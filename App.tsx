@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { CalculatorInputs, CalculationResults, NicheData, UserProfile, SimulationHistory } from './types';
-import { ResultsDisplay } from './components/ResultsDisplay';
-import { LandingPage } from './components/LandingPage';
-import { CalculatorForm } from './components/CalculatorForm';
-import { AuthGate } from './components/AuthGate';
-import { SaveAuditModal } from './components/SaveAuditModal';
-import { Dashboard } from './components/Dashboard';
-import { AdminDashboard } from './components/AdminDashboard';
-import { Boutique } from './components/Boutique';
-import { UserDashboard, ExpertAvatar } from './components/UserDashboard';
-import { AuthService, AdminService, AuditService } from './services/storage';
-import { Logo } from './components/Logo';
+import { CalculatorInputs, CalculationResults, NicheData, UserProfile, SimulationHistory } from './types.ts';
+import { ResultsDisplay } from './components/ResultsDisplay.tsx';
+import { LandingPage } from './components/LandingPage.tsx';
+import { CalculatorForm } from './components/CalculatorForm.tsx';
+import { AuthGate } from './components/AuthGate.tsx';
+import { SaveAuditModal } from './components/SaveAuditModal.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
+import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { Boutique } from './components/Boutique.tsx';
+import { UserDashboard, ExpertAvatar } from './components/UserDashboard.tsx';
+import { AuthService, AdminService, AuditService } from './services/storage.ts';
+import { Logo } from './components/Logo.tsx';
 
 const NICHE_DATA: NicheData[] = [
   { id: 'fashion', label: 'Vêtements / Mode', benchmarkRoas: 2.8, benchmarkCtr: 1.1 },
@@ -162,7 +162,6 @@ export default function App() {
       setShowSaveModal(false);
       showNotification("Diagnostic archivé avec succès, Alexia !");
       setAppMode('user_dashboard');
-      // On s'assure d'être sur l'onglet historique
       setTimeout(() => {
           const ev = new CustomEvent('setDashboardTab', { detail: 'history' });
           window.dispatchEvent(ev);

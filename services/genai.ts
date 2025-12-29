@@ -1,7 +1,16 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Utilisation sécurisée de la clé API pour éviter les crashs si process.env est manquant
+const getApiKey = () => {
+  try {
+    return (typeof process !== 'undefined' && process.env?.API_KEY) || '';
+  } catch (e) {
+    return '';
+  }
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
@@ -65,6 +74,6 @@ Format de sortie : Renvoie uniquement un objet JSON contenant les scores, les ca
       }
     });
 
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || '{}');
   }
 };
