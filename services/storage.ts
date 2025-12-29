@@ -110,7 +110,7 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // Fetch profiles without strict jointure first to ensure visibility
+      // Étape 1 : Récupérer tous les profils (Affichage inconditionnel)
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('*, audits(*)')
@@ -119,6 +119,7 @@ export const AdminService = {
       if (profileError) throw profileError;
 
       return (profiles || []).map(p => {
+        // Trier les audits du plus récent au plus ancien
         const userAudits = Array.isArray(p.audits) ? p.audits.sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ) : [];
@@ -149,7 +150,7 @@ export const AdminService = {
         };
       });
     } catch (e) { 
-      console.error("Critical Admin Fetch Error:", e);
+      console.error("Admin Service Fetch Error:", e);
       return []; 
     }
   },
@@ -157,5 +158,5 @@ export const AdminService = {
   updateLeadConsulting: async (userId: string, value: number) => { await supabase.from('profiles').update({ consulting_value: value }).eq('id', userId); },
   getNewLeadsCount: async (): Promise<number> => { try { const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'new'); return count || 0; } catch (e) { return 0; } },
   getGuides: (): Guide[] => { return DEFAULT_GUIDES; },
-  saveGuide: (guide: Guide) => { console.log("Guide saved locally"); }
+  saveGuide: (guide: Guide) => { console.log("Guide mis à jour"); }
 };

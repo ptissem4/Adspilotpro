@@ -27,10 +27,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     setLoading(true);
     try {
       const data = await AdminService.getGlobalLeads();
-      console.log("Leads loaded in Dashboard:", data);
       setLeads(data);
     } catch (e) {
-      console.error("Erreur chargement leads:", e);
+      console.error("Erreur chargement leads dashboard:", e);
     } finally {
       setLoading(false);
     }
@@ -49,16 +48,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     if (!selectedLead || !selectedLead.lastSimulation) return { title: 'Prospect Froid', text: 'En attente de son premier diagnostic Andromeda.' };
     const inputs = selectedLead.lastSimulation.inputs;
     const emq = parseFloat(inputs.emqScore) || 0;
-    const ltv = parseFloat(inputs.ltv) || 0;
-    const pmv = parseFloat(inputs.pmv) || 1;
     const budget = parseFloat(inputs.currentBudget) || 0;
 
-    if (emq < 6) return { title: "Signal Critique", text: `Pixel aveugle (${emq}/10). Dépense ${formatCurrency(budget)}/mois au hasard. Proposez SOS Signal.` };
-    if ((ltv / pmv) < 1.3) return { title: "Marge à Risque", text: `La LTV est trop faible (${formatCurrency(ltv)}). Proposez d'activer son backend.` };
-    return { title: "Scale Prêt", text: "Metrics au vert. Sécurisez la montée en charge verticale." };
+    if (emq < 6) return { title: "Priorité : Signal", text: `Pixel aveugle (${emq}/10). Vendez-lui SOS Signal.` };
+    return { title: "Priorité : Scaling", text: "Structure stable. Sécurisez la montée en charge verticale." };
   }, [selectedLead]);
 
-  // FILTRAGE INCONDITIONNEL (On affiche tout par défaut)
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       const term = searchTerm.toLowerCase();
@@ -73,7 +68,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   }, [leads, searchTerm, filterType]);
 
   const getStatusDot = (type: 'signal' | 'ltv' | 'scaling', lead: LeadData) => {
-    if (!lead.lastSimulation) return <div className="w-2 h-2 rounded-full bg-slate-200 opacity-30 shadow-inner" />;
+    if (!lead.lastSimulation) return <div className="w-2 h-2 rounded-full bg-slate-200" />;
     let color = 'bg-slate-200';
     const inputs = lead.lastSimulation.inputs;
     if (type === 'signal') {
@@ -83,10 +78,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       const ratio = (parseFloat(inputs.ltv) || 1) / (parseFloat(inputs.pmv) || 1);
       color = ratio > 1.3 ? 'bg-emerald-500' : 'bg-red-500';
     } else if (type === 'scaling') {
-      const results = lead.lastSimulation.results;
-      color = (results?.recommendationType === 'scale') ? 'bg-emerald-500' : 'bg-amber-500';
+      color = lead.lastSimulation.results.recommendationType === 'scale' ? 'bg-emerald-500' : 'bg-amber-500';
     }
-    return <div className={`w-2 h-2 rounded-full ${color} shadow-sm transition-colors`} />;
+    return <div className={`w-2 h-2 rounded-full ${color}`} />;
   };
 
   const handleSelectLead = (lead: LeadData) => {
@@ -107,14 +101,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
       const value = parseFloat(consultingInput) || 0;
       await AdminService.updateLeadConsulting(selectedLead.user.id, value);
       loadLeads();
-      alert("Valeur Consulting enregistrée !");
+      alert("Consulting mis à jour !");
     }
   };
 
   const handleSaveNote = async () => {
     if (selectedLead && selectedLead.lastSimulation) {
       await AuditService.updateAudit(selectedLead.lastSimulation.id, { notes: expertNote });
-      alert("Note enregistrée.");
+      alert("Note enregistrée !");
     }
   };
 
@@ -130,22 +124,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
               </div>
           </div>
           <nav className="flex-1 p-4 overflow-y-auto space-y-2">
-              <button onClick={() => setActiveTab('pipeline')} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-                <span className="text-lg">🎯</span> Pipeline CRM
+              <button onClick={() => setActiveTab('pipeline')} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                🎯 Pipeline CRM
               </button>
           </nav>
           <div className="p-4 border-t border-slate-800 flex items-center gap-4">
-              <div className="relative">
-                <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover border border-slate-700 shadow-xl" alt="Admin" />
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
-              </div>
+              <img src="IMG_2492.jpg" className="w-10 h-10 rounded-xl object-cover border border-slate-700 shadow-xl" alt="Alexia" />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black uppercase truncate">Alexia</p>
                 <p className="text-[8px] text-slate-500 truncate uppercase tracking-widest">Admin Principal</p>
               </div>
           </div>
           <div className="p-4">
-              <button onClick={onLogout} className="w-full bg-slate-800 text-slate-400 hover:text-white py-2 rounded-lg text-[9px] font-black uppercase transition-colors">Déconnexion</button>
+              <button onClick={onLogout} className="w-full bg-slate-800 text-slate-400 hover:text-white py-2 rounded-lg text-[9px] font-black uppercase">Déconnexion</button>
           </div>
       </aside>
 
@@ -154,54 +145,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
               <div className="flex items-center gap-6">
                 <h1 className="text-sm font-black text-slate-900 uppercase italic tracking-tighter">Flux Pipeline</h1>
                 <div className="flex gap-2">
-                    <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Tous ({leads.length})</button>
-                    <button onClick={() => setFilterType('buyers')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'buyers' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Acheteurs</button>
-                    <button onClick={() => setFilterType('premium')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'premium' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>Consulting</button>
+                    <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>Tous ({leads.length})</button>
+                    <button onClick={() => setFilterType('buyers')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'buyers' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>Acheteurs</button>
+                    <button onClick={() => setFilterType('premium')} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${filterType === 'premium' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>Consulting</button>
                 </div>
               </div>
               <div className="relative w-80">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                <input type="text" placeholder="Rechercher par nom..." className="w-full bg-slate-50 border border-slate-200 py-2 rounded-xl text-xs font-medium pl-10 outline-none focus:ring-2 ring-indigo-500/20 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Rechercher par nom..." className="w-full bg-slate-50 border border-slate-200 py-2 rounded-xl text-xs font-medium pl-10 outline-none focus:ring-2 ring-indigo-500/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
           </header>
 
           <div className="flex-1 flex overflow-hidden">
+              {/* LISTE DES PROSPECTS RÉELLE */}
               <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                  {loading ? (
+                  {loading && leads.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
                       <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Sync Pipeline...</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest">Initialisation Andromeda...</p>
                     </div>
                   ) : filteredLeads.length === 0 ? (
                     <div className="bg-white rounded-[2rem] p-20 text-center border-2 border-dashed border-slate-200">
                        <p className="text-4xl mb-4">🏜️</p>
                        <p className="font-black uppercase text-sm text-slate-900">Pipeline Vide</p>
-                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-2">Aucun prospect trouvé dans la base Profiles.</p>
-                       <button onClick={loadLeads} className="mt-6 text-[10px] font-black text-indigo-600 uppercase underline">Forcer l'actualisation</button>
+                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-2 italic">Aucun profil correspondant trouvé dans la base.</p>
                     </div>
                   ) : (
                     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
                       <table className="min-w-full divide-y divide-slate-100">
-                          <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
+                          <thead className="bg-slate-50 sticky top-0 z-10">
                               <tr>
-                                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72">Identité (profiles.full_name)</th>
-                                  <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Statut Client</th>
-                                  <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Andromeda Triage</th>
+                                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72">Identité & Projet</th>
+                                  <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Statut</th>
+                                  <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Andromeda Triage</th>
                                   <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Inscrit</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                               {filteredLeads.map((lead) => (
-                                <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : ''}`}>
+                                <tr key={lead.user.id} onClick={() => handleSelectLead(lead)} className={`cursor-pointer transition-all hover:bg-slate-50 ${selectedLead?.user.id === lead.user.id ? 'bg-indigo-50 ring-1 ring-indigo-200' : ''}`}>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
-                                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100 shadow-inner">
+                                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs shrink-0 border border-indigo-100">
                                             {(lead.user.full_name || "P").charAt(0).toUpperCase()}
                                           </div>
                                           <div className="flex flex-col min-w-0">
-                                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">
-                                              {lead.user.full_name || lead.user.email}
-                                            </span>
+                                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">{lead.user.full_name}</span>
                                             <span className={`text-[9px] font-bold uppercase italic truncate ${lead.lastSimulation ? 'text-indigo-600' : 'text-slate-300'}`}>
                                               {lead.lastSimulation ? lead.lastSimulation.name : "En attente d'audit"}
                                             </span>
@@ -210,8 +199,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                     </td>
                                     <td className="px-4 py-4 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                           {(lead.user.consultingValue || 0) > 0 && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Premium</span>}
-                                           {(lead.user.purchasedProducts?.length || 0) > 0 && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Acheteur</span>}
+                                           {(lead.user.consultingValue || 0) > 0 && <span className="text-[7px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase">Premium</span>}
+                                           {(lead.user.purchasedProducts?.length || 0) > 0 && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase">Acheteur</span>}
                                            {(lead.user.consultingValue || 0) === 0 && (lead.user.purchasedProducts?.length || 0) === 0 && <span className="text-[7px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Lead</span>}
                                         </div>
                                     </td>
@@ -233,13 +222,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                   )}
               </div>
 
-              {/* PANNEAU DE DROITE */}
+              {/* PANNEAU DE DROITE (DÉTAILS) */}
               <div className="w-[500px] overflow-y-auto bg-white border-l border-slate-200 shrink-0 flex flex-col shadow-2xl">
                   {selectedLead ? (
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 flex flex-col">
                       {showFullReport && selectedLead.lastSimulation ? (
-                        <div className="flex-1 overflow-y-auto relative bg-slate-50">
-                           <button onClick={() => setShowFullReport(false)} className="fixed top-24 right-12 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-indigo-600 transition-all">
+                        <div className="flex-1 overflow-y-auto bg-slate-50 relative">
+                           <button onClick={() => setShowFullReport(false)} className="fixed top-24 right-12 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-indigo-600">
                              &larr; Retour Cockpit
                            </button>
                            <div className="scale-90 origin-top pt-10">
@@ -251,7 +240,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
                                <div className="relative z-10 flex justify-between items-start">
                                   <div className="space-y-1">
-                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2">IDENTITÉ DÉTECTÉE</p>
+                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2 italic">IDENTITÉ DÉTECTÉE</p>
                                      <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedLead.user.full_name}</h2>
                                      <p className="text-sm text-slate-300 font-bold">{selectedLead.user.email}</p>
                                   </div>
@@ -268,7 +257,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Consulting Encaissé</h4>
                                   <div className="flex items-center gap-2">
                                      <input type="number" value={consultingInput} onChange={(e) => setConsultingInput(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 ring-indigo-500/20 outline-none" placeholder="0 €" />
-                                     <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100">OK</button>
+                                     <button onClick={handleUpdateConsulting} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100 active:scale-95">OK</button>
                                   </div>
                                </div>
                                <div className="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100 flex flex-col shadow-sm">
@@ -288,9 +277,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                             {selectedLead.lastSimulation ? (
                               <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-indigo-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-indigo-100">
+                                    <div className="bg-indigo-600 p-6 rounded-[2.5rem] text-white shadow-xl">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-2">Provision Hebdo</p>
-                                        <p className="text-3xl font-black text-white">{formatCurrency(selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0)}</p>
+                                        <p className="text-3xl font-black">{formatCurrency(selectedLead.lastSimulation.results.tresorerieLatenteHebdo || 0)}</p>
                                     </div>
                                     <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Andromeda Score</p>
@@ -304,7 +293,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dernier Audit</h3>
                                          <p className="text-lg font-black text-slate-900 uppercase italic truncate tracking-tighter">{selectedLead.lastSimulation.name}</p>
                                       </div>
-                                      <button onClick={() => setShowFullReport(true)} className="bg-slate-50 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm">
+                                      <button onClick={() => setShowFullReport(true)} className="bg-slate-50 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-50 shadow-sm">
                                          Voir Rapport &rarr;
                                       </button>
                                    </div>
@@ -318,7 +307,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                               <div className="bg-slate-50 rounded-[3rem] p-12 text-center border border-dashed border-slate-200">
                                 <span className="text-4xl block mb-4">🧊</span>
                                 <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">En attente d'audit</h5>
-                                <p className="text-[10px] text-slate-400 italic max-w-[200px] mx-auto leading-relaxed">Cet utilisateur n'a pas encore lancé de diagnostic de performance Andromeda.</p>
+                                <p className="text-[10px] text-slate-400 italic max-w-[200px] mx-auto leading-relaxed">Cet utilisateur n'a pas encore lancé de diagnostic Andromeda.</p>
                               </div>
                             )}
 
@@ -328,7 +317,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                                   <span className="h-px flex-1 bg-slate-100"></span>
                                </div>
                                <textarea 
-                                 className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300 shadow-inner" 
+                                 className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-xs font-medium focus:ring-2 ring-indigo-500/20 outline-none placeholder:text-slate-300 shadow-inner" 
                                  placeholder="Note privée d'accompagnement..." 
                                  value={expertNote} 
                                  onChange={(e) => setExpertNote(e.target.value)} 
@@ -342,7 +331,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                     <div className="h-full flex flex-col items-center justify-center p-12 text-center opacity-30">
                         <Logo iconOnly className="scale-150 mb-10 opacity-20" />
                         <p className="font-black uppercase tracking-[0.4em] text-[11px]">Cockpit Pipeline AdsPilot</p>
-                        <p className="text-[9px] text-slate-400 mt-2 uppercase tracking-widest">Sélectionnez un prospect pour voir ses data</p>
+                        <p className="text-[9px] text-slate-400 mt-2 uppercase tracking-widest">Sélectionnez un prospect</p>
                     </div>
                   )}
               </div>
