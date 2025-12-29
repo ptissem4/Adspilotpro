@@ -110,20 +110,22 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // Étape 1 : Récupérer tous les profils (Affichage inconditionnel)
-      const { data: profiles, error: profileError } = await supabase
+      // Stratégie de secours : Fetch séparé pour éviter les bugs de jointure
+      const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('*, audits(*)')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (profileError) throw profileError;
+      if (pErr) throw pErr;
+
+      // On récupère TOUS les audits pour faire la liaison en JS
+      const { data: allAudits, error: aErr } = await supabase
+        .from('audits')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       return (profiles || []).map(p => {
-        // Trier les audits du plus récent au plus ancien
-        const userAudits = Array.isArray(p.audits) ? p.audits.sort((a: any, b: any) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ) : [];
-        
+        const userAudits = (allAudits || []).filter(a => a.user_id === p.id);
         const lastAudit = userAudits.length > 0 ? userAudits[0] : null;
 
         return {
@@ -150,7 +152,7 @@ export const AdminService = {
         };
       });
     } catch (e) { 
-      console.error("Admin Service Fetch Error:", e);
+      console.error("AdminService.getGlobalLeads Nuclear Error:", e);
       return []; 
     }
   },
