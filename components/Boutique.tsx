@@ -18,10 +18,6 @@ const FAQ_ITEMS = [
   {
     question: "Le guide SOS Signal suffit-il pour corriger le tracking ?",
     answer: "Oui, il vous donne la méthode pas à pas pour restaurer un signal propre (EMQ > 8/10) via GTM server-side, permettant à l'IA de retrouver sa vision et sa rentabilité immédiate."
-  },
-  {
-    question: "Puis-je réserver un appel sans faire d'audit ?",
-    answer: "Absolument. L'appel d'urgence (Session Flash) est ouvert à tous ceux qui souhaitent un avis expert immédiat sur leur stratégie, sans passer par l'outil de diagnostic."
   }
 ];
 
@@ -38,26 +34,12 @@ export const Boutique: React.FC<BoutiqueProps> = ({ onNotification }) => {
     setEmail('');
   };
 
-  // Structured Data for SEO
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": FAQ_ITEMS.map(item => ({
-      "@type": "Question",
-      "name": item.question,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": item.answer
-      }
-    }))
+  const hasPurchased = (productId: string) => {
+    return currentUser?.purchasedProducts?.includes(productId);
   };
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-20 animate-fade-in space-y-24 pb-40">
-      <script type="application/ld+json">
-        {JSON.stringify(jsonLd)}
-      </script>
-      
       {/* HEADER */}
       <div className="text-center space-y-6">
         <div className="inline-block px-5 py-2 bg-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.4em] mb-4 text-white shadow-lg">
@@ -75,7 +57,7 @@ export const Boutique: React.FC<BoutiqueProps> = ({ onNotification }) => {
           <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl max-w-xl mx-auto mt-8 flex items-center gap-4 text-left">
              <span className="text-2xl">🎁</span>
              <p className="text-xs text-indigo-900 font-medium leading-relaxed italic">
-               <strong>Avis aux nouveaux clients :</strong> Suite à votre achat sur Stripe, vous pourrez créer votre compte instantanément pour accéder à vos guides et à votre cockpit de pilotage.
+               <strong>Note :</strong> Après votre achat, votre accès sera activé instantanément sur votre cockpit AdsPilot Pro grâce à notre synchronisation en temps réel.
              </p>
           </div>
         )}
@@ -94,23 +76,26 @@ export const Boutique: React.FC<BoutiqueProps> = ({ onNotification }) => {
             icon="📡"
             title="SOS Signal"
             price="47€"
-            description="Réparez votre tracking et restaurez la vision de Meta sur vos conversions. Indispensable si EMQ < 8."
-            link="https://buy.stripe.com/test_sos_signal"
+            description="Réparez votre tracking et restaurez la vision de Meta. Indispensable si votre score EMQ est inférieur à 8."
+            link="https://ton-tunnel-sio.com/sos-signal"
+            purchased={hasPurchased('SOS Signal')}
           />
           <GuideCard 
             icon="💎"
             title="LTV Maximal"
             price="67€"
-            description="Activez vos leviers de rétention pour rentabiliser chaque prospect au-delà du premier achat."
-            link="https://buy.stripe.com/test_ltv_maximal"
+            description="Le protocole complet pour transformer un acheteur unique en client fidèle. Débloquez votre profit dormant."
+            link="https://ton-tunnel-sio.com/ltv-maximal"
             isFeatured
+            purchased={hasPurchased('LTV Maximal')}
           />
           <GuideCard 
             icon="🎯"
             title="Scale & Sniper"
             price="97€"
-            description="Passez de 1k à 10k/jour sans exploser votre CPA grâce à la structure Broad et au Mix Créatif."
-            link="https://buy.stripe.com/test_scale_sniper"
+            description="La structure de campagne Broad pour passer de 1k à 10k/jour sans exploser votre CPA."
+            link="https://ton-tunnel-sio.com/scale-sniper"
+            purchased={hasPurchased('Scale & Sniper')}
           />
         </div>
       </section>
@@ -145,56 +130,7 @@ export const Boutique: React.FC<BoutiqueProps> = ({ onNotification }) => {
         </div>
       </section>
 
-      {/* SECTION C: ACCOMPAGNEMENT */}
-      <section className="space-y-12">
-        <div className="flex items-center gap-4">
-          <div className="h-px flex-1 bg-slate-200"></div>
-          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.5em]">Section C : Accompagnement</h3>
-          <div className="h-px flex-1 bg-slate-200"></div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <div className="bg-slate-900 rounded-[3rem] p-10 text-white flex flex-col justify-between hover:-translate-y-2 transition-transform shadow-2xl">
-            <div className="space-y-6">
-              <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg">⚡</div>
-              <h4 className="text-2xl font-black uppercase tracking-tighter">Session Flash (1h)</h4>
-              <p className="text-slate-400 text-sm font-medium italic leading-relaxed">
-                Un diagnostic en direct pour débloquer votre situation, corriger un CPA toxique ou valider votre structure de test.
-              </p>
-            </div>
-            <div className="mt-12 space-y-4">
-              <p className="text-3xl font-black">150€ <span className="text-xs text-slate-500 font-bold uppercase">TTC</span></p>
-              <button 
-                onClick={() => window.open('https://buy.stripe.com/test_session_flash', '_blank')}
-                className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white hover:text-slate-900 transition-all"
-              >
-                Réserver ma Session &rarr;
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white border-2 border-slate-900 rounded-[3rem] p-10 flex flex-col justify-between hover:-translate-y-2 transition-transform shadow-xl">
-            <div className="space-y-6">
-              <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-slate-200">🛡️</div>
-              <h4 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Audit Stratégique Complet</h4>
-              <p className="text-slate-500 text-sm font-medium italic leading-relaxed">
-                Analyse profonde de votre BM, analyse créative comparative et plan d'action opérationnel à 90 jours pour scaler sereinement.
-              </p>
-            </div>
-            <div className="mt-12 space-y-4">
-              <p className="text-3xl font-black text-slate-900">Sur Devis</p>
-              <button 
-                onClick={() => window.location.href='mailto:shopiflight@gmail.com?subject=Demande Audit Stratégique Complet'}
-                className="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg"
-              >
-                Demander un Devis &rarr;
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION D: FAQ DYNAMIQUE */}
+      {/* SECTION C: FAQ DYNAMIQUE */}
       <section className="space-y-12 max-w-3xl mx-auto pt-12">
         <div className="text-center space-y-4 mb-10">
           <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">Questions Fréquentes</h3>
@@ -250,24 +186,28 @@ export const Boutique: React.FC<BoutiqueProps> = ({ onNotification }) => {
   );
 };
 
-const GuideCard = ({ icon, title, price, description, link, isFeatured = false }: { icon: string, title: string, price: string, description: string, link: string, isFeatured?: boolean }) => (
+const GuideCard = ({ icon, title, price, description, link, isFeatured = false, purchased = false }: { icon: string, title: string, price: string, description: string, link: string, isFeatured?: boolean, purchased?: boolean }) => (
   <div className={`bg-white rounded-[2.5rem] p-8 border transition-all duration-500 flex flex-col hover:shadow-2xl hover:-translate-y-2 ${isFeatured ? 'border-indigo-400 shadow-xl ring-4 ring-indigo-500/5' : 'border-slate-100 shadow-sm'}`}>
     <div className="flex justify-between items-start mb-6">
-      <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-slate-100">{icon}</div>
-      <div className="bg-slate-900 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">E-BOOK</div>
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-inner border ${purchased ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>{purchased ? '✅' : icon}</div>
+      <div className={`${purchased ? 'bg-emerald-500' : 'bg-slate-900'} text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest`}>{purchased ? 'ACQUIS' : 'E-BOOK'}</div>
     </div>
     <h4 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">{title}</h4>
     <p className="text-slate-500 text-xs font-medium mb-8 flex-1 italic leading-relaxed">"{description}"</p>
     <div className="pt-6 border-t border-slate-50 flex items-end justify-between">
       <div>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Prix Fixe</p>
-        <p className="text-2xl font-black text-slate-900">{price}</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{purchased ? 'Statut' : 'Prix Fixe'}</p>
+        <p className={`text-2xl font-black ${purchased ? 'text-emerald-500' : 'text-slate-900'}`}>{purchased ? 'Débloqué' : price}</p>
       </div>
       <button 
-        onClick={() => window.open(link, '_blank')}
-        className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isFeatured ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-slate-900' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}
+        onClick={() => !purchased && window.open(link, '_blank')}
+        className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+          purchased 
+            ? 'bg-emerald-500 text-white cursor-default' 
+            : (isFeatured ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-slate-900' : 'bg-slate-900 text-white hover:bg-indigo-600')
+        }`}
       >
-        Accès Immédiat
+        {purchased ? 'Accéder au Guide' : 'Accès Immédiat'}
       </button>
     </div>
   </div>

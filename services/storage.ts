@@ -12,29 +12,29 @@ const STORAGE_KEYS = {
 
 const DEFAULT_GUIDES: Guide[] = [
   {
-    id: 'signal',
+    id: 'SOS Signal',
     title: 'Guide SOS Signal',
     price: '47€',
     description: 'Réparez votre tracking et restaurez la vision de Meta sur vos conversions.',
-    link: 'https://ton-lien-systeme-io/guide-sos-signal',
+    link: 'https://ton-tunnel-sio.com/sos-signal',
     icon: '📡',
     recommendationTrigger: 'signal'
   },
   {
-    id: 'ltv',
+    id: 'LTV Maximal',
     title: 'Système LTV Maximal',
     price: '67€',
     description: 'Activez vos leviers de rétention pour rentabiliser chaque prospect au-delà du premier achat.',
-    link: 'https://ton-lien-systeme-io/systeme-ltv',
+    link: 'https://ton-tunnel-sio.com/ltv-maximal',
     icon: '💎',
     recommendationTrigger: 'ltv'
   },
   {
-    id: 'scaling',
+    id: 'Scale & Sniper',
     title: 'Scale & Sniper',
     price: '97€',
     description: 'Passez de 1k à 10k/jour sans exploser votre CPA grâce à la structure Broad.',
-    link: 'https://ton-lien-systeme-io/scale-sniper',
+    link: 'https://ton-tunnel-sio.com/scale-sniper',
     icon: '🎯',
     recommendationTrigger: 'scaling'
   }
@@ -110,7 +110,6 @@ export const AuditService = {
 export const AdminService = {
   getGlobalLeads: async (): Promise<LeadData[]> => {
     try {
-      // Stratégie de secours : Fetch séparé pour éviter les bugs de jointure
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
         .select('*')
@@ -118,7 +117,6 @@ export const AdminService = {
 
       if (pErr) throw pErr;
 
-      // On récupère TOUS les audits pour faire la liaison en JS
       const { data: allAudits, error: aErr } = await supabase
         .from('audits')
         .select('*')
