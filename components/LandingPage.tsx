@@ -46,25 +46,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
         </div>
       </nav>
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - REFINED COPYWRITING */}
       <section className="relative pt-32 md:pt-64 pb-20 md:pb-48 bg-white overflow-hidden text-center px-4">
         <div className="max-w-6xl mx-auto relative z-10">
            <div className="inline-block px-4 py-1.5 bg-indigo-50 text-[#6366F1] rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] mb-8 md:mb-12 border border-indigo-100">
               Système d'Exploitation ROI v6.2
            </div>
            <h1 className="text-4xl md:text-[6.5rem] font-black tracking-tighter text-[#1E293B] mb-8 md:mb-12 leading-[0.9] uppercase italic">
-             ARRÊTEZ DE PILOTER <br/>
-             VOTRE CROISSANCE <br/>
-             <span className="text-[#6366F1]">DANS LE NOIR.</span>
+             PILOTEZ VOTRE <br/>
+             CROISSANCE À LA <br/>
+             <span className="text-[#6366F1]">MARGE NETTE.</span>
            </h1>
            <p className="text-lg md:text-2xl text-[#64748B] max-w-4xl mx-auto mb-12 md:mb-20 leading-relaxed font-medium italic">
-             Accédez à l'infrastructure décisionnelle du top 1% des annonceurs. Pilotez votre rentabilité nette, auditez vos créas par IA et simulez votre scale avec une précision chirurgicale.
+             Arrêtez de naviguer à l'aveugle avec le ROAS de Meta. Accédez à l'infrastructure qui audite vos créas par IA et sécurise votre rentabilité réelle.
            </p>
            <button 
               onClick={onStart}
               className="w-full md:w-auto bg-[#1E293B] text-white px-8 md:px-14 py-5 md:py-7 rounded-2xl text-lg md:text-xl font-black uppercase italic tracking-widest shadow-2xl hover:bg-[#6366F1] transition-all hover:-translate-y-1 active:scale-95"
             >
-              LANCER MON DIAGNOSTIC GRATUIT &rarr;
+              ACTIVER MON INFRASTRUCTURE &rarr;
             </button>
         </div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-indigo-50/30 rounded-full blur-[80px] md:blur-[120px] -z-0"></div>
@@ -86,19 +86,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
              <ModuleSummaryCard 
                 title="ATLAS (P&L)" 
-                desc="Le Titan Financier. Ne vous fiez plus au ROAS menteur. Maîtrisez votre profit net réel après chaque dépense." 
+                desc="Le Titan Financier. Réconciliation totale de vos marges. Ne laissez plus aucun euro s'échapper." 
                 icon="🌍" 
                 badge="Finance"
+                caseBadge="Cas d’école : +4 150€ de profit net identifiés"
              />
              <ModuleSummaryCard 
                 title="ORACLE (VISION)" 
-                desc="L’Audit Créatif IA. Détectez instantanément pourquoi vos publicités ne convertissent pas avant de dépenser votre budget." 
+                desc="L’Audit Créatif IA. Scannez vos publicités et identifiez les failles de conversion avant de dépenser." 
                 icon="👁️" 
                 badge="Intelligence"
+                caseBadge="Cas d’école : CTR boosté de 0,8% à 3,2%"
              />
              <ModuleSummaryCard 
                 title="MERCURY (SCALE)" 
-                desc="Le Simulateur de Profit. Prédisez vos revenus à 30 jours et scalez sans jamais casser votre algorithme." 
+                desc="Le Simulateur de Profit. Prédisez vos revenus et scalez avec une précision chirurgicale." 
                 icon="⚡" 
                 badge="Simulation"
              />
@@ -143,7 +145,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 ]}
                 side="right"
                 mockup={<AtlasSnippetDark />}
-                caption="Détection instantanée des anomalies de profit."
+                caption="Atlas Engine : Alerte ROUGE sur les frais logistiques non détectés."
              />
 
              {/* MODULE 2: ORACLE */}
@@ -158,7 +160,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 ]}
                 side="left"
                 mockup={<OracleSnippetDark />}
-                caption="Validation scientifique de vos actifs créatifs par IA."
+                caption="Oracle Vision : Score VERT validé pour le déploiement massif."
              />
 
              {/* MODULE 3: MERCURY */}
@@ -173,7 +175,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 ]}
                 side="right"
                 mockup={<MercurySnippetDark />}
-                caption="Simulateur Mercury : Précision prédictive chirurgicale."
+                caption="Mercury Simulator : Prédiction chirurgicale du seuil de scale."
              />
 
              {/* MODULE 4: ANDROMEDA */}
@@ -188,7 +190,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 ]}
                 side="left"
                 mockup={<AndromedaSnippetDark />}
-                caption="Comparatif en temps réel avec les standards du marché."
+                caption="Comparatif Andromeda : Positionnement face au Top 1%."
              />
           </div>
 
@@ -202,7 +204,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 onClick={onLogin}
                 className="w-full md:w-auto relative z-10 bg-white text-slate-900 px-8 md:px-16 py-6 md:py-8 rounded-2xl text-lg md:text-xl font-black uppercase italic tracking-widest hover:bg-[#6366F1] hover:text-white transition-all shadow-2xl active:scale-95"
               >
-                ACCÉDER AU COCKPIT &rarr;
+                ACTIVER MON INFRASTRUCTURE &rarr;
               </button>
           </div>
         </div>
@@ -266,13 +268,20 @@ const DossierItem = ({ badge, title, problem, solution, metrics, side, mockup, c
   </div>
 );
 
-const ModuleSummaryCard = ({ title, desc, icon, badge }: any) => (
-  <div className="p-8 md:p-10 bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] space-y-5 md:space-y-6 hover:border-[#6366F1] hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 group relative overflow-hidden">
+const ModuleSummaryCard = ({ title, desc, icon, badge, caseBadge }: any) => (
+  <div className="p-8 md:p-10 bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] space-y-5 md:space-y-6 hover:border-[#6366F1] hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
      <div className="absolute top-4 right-4"><span className="text-[8px] font-black uppercase tracking-widest bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full">{badge}</span></div>
      <div className="w-12 md:w-14 h-12 md:h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-xl md:text-2xl group-hover:bg-indigo-50 group-hover:scale-110 transition-all">{icon}</div>
-     <div>
+     <div className="flex-1">
         <h5 className="text-xl font-black italic uppercase tracking-tighter text-[#1E293B] mb-2">{title}</h5>
-        <p className="text-slate-500 text-[13px] md:text-sm font-medium italic leading-relaxed">{desc}</p>
+        <p className="text-slate-500 text-[13px] md:text-sm font-medium italic leading-relaxed mb-4">{desc}</p>
+        {caseBadge && (
+           <div className="mt-auto pt-4 border-t border-slate-50">
+              <span className="inline-block bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-emerald-100 italic">
+                 {caseBadge}
+              </span>
+           </div>
+        )}
      </div>
   </div>
 );
@@ -302,7 +311,7 @@ const AtlasSnippetDark = () => (
      </div>
      <div className="space-y-6 md:space-y-8">
         <div className="p-6 md:p-8 bg-red-500/10 border border-red-500/20 rounded-2xl md:rounded-3xl flex justify-between items-center">
-           <span className="text-[9px] md:text-[10px] font-black text-red-400 uppercase tracking-widest">Fuite Détectée</span>
+           <span className="text-[9px] md:text-[10px] font-black text-red-400 uppercase tracking-widest">Alerte ROUGE</span>
            <span className="text-xl md:text-2xl font-black text-red-500">- 4 000 €</span>
         </div>
         <div className="flex justify-center opacity-30"><span className="text-white text-2xl">↓</span></div>
@@ -324,10 +333,10 @@ const OracleSnippetDark = () => (
         <div className="space-y-3 md:space-y-4">
            <div className="flex justify-between text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">
               <span>Hook Rate (3s)</span>
-              <span className="text-amber-500">Alerte Orange — 4.2</span>
+              <span className="text-emerald-500">Score VERT — 8.2</span>
            </div>
            <div className="h-2 md:h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full w-[42%] bg-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.5)]"></div>
+              <div className="h-full w-[82%] bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
            </div>
         </div>
         <div className="space-y-3 md:space-y-4">
