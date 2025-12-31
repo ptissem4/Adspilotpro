@@ -64,18 +64,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
     };
   }, [user.id]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (auditId: string) => {
+    if (!window.confirm("Alexia, confirmer la suppression définitive de cet audit ?")) return;
+    
     setLoading(true);
-    const { error } = await supabase.from('audits').delete().match({ id: id });
+    console.log('Tentative de suppression de ID:', auditId);
+    
+    const { error } = await supabase
+      .from('audits')
+      .delete()
+      .eq('id', auditId);
     
     if (error) {
-      console.error('Erreur Supabase:', error);
-      alert('Erreur: ' + error.message);
+      console.error('Erreur Supabase Critique:', error);
+      alert('Erreur Supabase : ' + error.message + ' (Code: ' + error.code + ')');
       setLoading(false);
     } else {
       // Mise à jour immédiate de l'écran
-      setHistory(prev => prev.filter(a => a.id !== id));
-      if (onNotification) onNotification("Nettoyage terminé, Alexia.");
+      setHistory(prev => prev.filter(a => a.id !== auditId));
+      if (onNotification) onNotification("Diagnostic supprimé, Alexia.");
       setLoading(false);
     }
   };
@@ -149,7 +156,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
                                       <span className="text-[9px] font-black uppercase tracking-widest">{style.label}</span>
                                    </div>
                                    <button 
-                                     onClick={(e) => { e.stopPropagation(); handleDelete(sim.id); }} 
+                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(sim.id); }} 
                                      className="relative z-[60] w-10 h-10 rounded-xl bg-slate-50 text-slate-300 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all shadow-sm active:scale-90 border border-slate-100"
                                      title="Supprimer l'audit"
                                    >

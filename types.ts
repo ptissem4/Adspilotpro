@@ -22,16 +22,22 @@ export interface CalculatorInputs {
   shippingCost?: string;
   retentionRate?: string; // % rachat
   productUrl?: string;
-  shopName?: string;
+  brand_name?: string;
   // Champs spécifiques Audit Créatif
   auditType?: 'pnl' | 'creative';
-  type?: 'ANDROMEDA' | 'CREATIVE';
+  type?: 'ANDROMEDA' | 'CREATIVE' | 'ORACLE' | 'MERCURY' | 'ATLAS';
   name?: string;
   checklistScore?: number;
   creativeHookScore?: number;
   creativeOfferScore?: number;
   creativeDesirabilityScore?: number;
   creativeImageUrl?: string;
+  // Champs spécifiques nouveaux modules
+  loadTime?: string; // Mercury
+  atcRate?: string; // Mercury
+  abandonmentRate?: string; // Mercury
+  stockLevel?: string; // Atlas
+  leadTimeDays?: string; // Atlas
 }
 
 export interface CalculationResults {
@@ -58,10 +64,15 @@ export interface CalculationResults {
   tresorerieLatenteHebdo: number;
   andromedaOptimized: boolean;
   creativeDiversityScore: number;
-  // Champs Hardcore
+  // Champs Hardcore / Nouveaux modules
   realNetProfit?: number;
   breakevenRoas?: number;
   estimatedCtr?: number;
+  calculatedLtv?: number;
+  conversionScore?: number;
+  frictionRate?: number;
+  scalingSolidarity?: number;
+  daysToStockout?: number;
 }
 
 export interface UserProfile {
@@ -76,8 +87,8 @@ export interface UserProfile {
   consultingValue?: number;
   isLocal?: boolean;
   // Données Business
-  shop_name?: string;
-  shop_url?: string;
+  brand_name?: string;
+  website_url?: string;
   shop_logo?: string;
   niche?: string;
   target_cpa?: number;
@@ -93,7 +104,7 @@ export interface SimulationHistory {
   results: CalculationResults;
   verdictLabel: string;
   notes?: string;
-  type: 'ANDROMEDA' | 'CREATIVE';
+  type: 'ANDROMEDA' | 'CREATIVE' | 'ORACLE' | 'MERCURY' | 'ATLAS';
 }
 
 export interface NicheData {

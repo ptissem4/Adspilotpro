@@ -10,6 +10,16 @@ const STORAGE_KEYS = {
   GUIDES: 'ads_pilot_guides'
 };
 
+/**
+ * 🛠️ SCRIPT DE MIGRATION SQL POUR L'EXPERT (À coller dans Supabase SQL Editor)
+ * 
+ * ALTER TABLE profiles 
+ * ADD COLUMN IF NOT EXISTS brand_name TEXT,
+ * ADD COLUMN IF NOT EXISTS website_url TEXT,
+ * ADD COLUMN IF NOT EXISTS niche TEXT,
+ * ADD COLUMN IF NOT EXISTS target_cpa NUMERIC;
+ */
+
 export const AuthService = {
   login: async (email: string, password: string): Promise<UserProfile> => {
     if (!configDiagnostic.hasUrl) throw new Error("Le serveur n'est pas configuré.");
@@ -27,8 +37,8 @@ export const AuthService = {
       createdAt: data.user.created_at,
       consultingValue: profile?.consulting_value || 0,
       purchasedProducts: profile?.purchased_products || [],
-      shop_name: profile?.shop_name,
-      shop_url: profile?.shop_url,
+      brand_name: profile?.brand_name,
+      website_url: profile?.website_url,
       shop_logo: profile?.shop_logo,
       niche: profile?.niche,
       target_cpa: profile?.target_cpa
@@ -55,14 +65,23 @@ export const AuthService = {
     }
   },
   updateBusiness: async (userId: string, updates: Partial<UserProfile>) => {
-    const { error } = await supabase.from('profiles').update({
-      shop_name: updates.shop_name,
-      shop_url: updates.shop_url,
+    // Utilisation d'UPSERT pour garantir la création ou mise à jour liée à l'ID
+    const { error } = await supabase.from('profiles').upsert({
+      id: userId,
+      brand_name: updates.brand_name,
+      website_url: updates.website_url,
       shop_logo: updates.shop_logo,
       niche: updates.niche,
-      target_cpa: updates.target_cpa
-    }).eq('id', userId);
-    if (error) throw error;
+      target_cpa: updates.target_cpa,
+      full_name: updates.full_name
+    });
+    
+    if (error) {
+      console.error("❌ ERREUR SUPABASE 400 - DÉTAILS CRITIQUES :");
+      console.dir(error); // Affiche l'objet d'erreur complet pour identifier le champ invalide
+      throw error;
+    }
+
     const current = AuthService.getCurrentUser();
     if (current) {
       const newUser = { ...current, ...updates };
@@ -74,7 +93,7 @@ export const AuthService = {
 };
 
 export const AuditService = {
-  saveAudit: async (user: UserProfile, inputs: CalculatorInputs, results: CalculationResults, verdictLabel: string, type: 'ANDROMEDA' | 'CREATIVE', name: string): Promise<SimulationHistory> => {
+  saveAudit: async (user: UserProfile, inputs: CalculatorInputs, results: CalculationResults, verdictLabel: string, type: 'ANDROMEDA' | 'CREATIVE' | 'ORACLE' | 'MERCURY' | 'ATLAS', name: string): Promise<SimulationHistory> => {
     const auditData = { 
       user_id: user.id, 
       name: name,
@@ -139,9 +158,14 @@ export const AuditService = {
     }
   },
   deleteAudit: async (auditId: string) => { 
-    const { data, error } = await supabase.from('audits').delete().match({ id: auditId }).select();
-    if (error) throw error;
-    return data && data.length > 0;
+    const { error } = await supabase.from('audits').delete().eq('id', auditId);
+    
+    if (error) {
+      console.error("❌ Détail Erreur Supabase (Delete):", error);
+      throw error;
+    }
+    
+    return true;
   }
 };
 
@@ -151,7 +175,6 @@ export const AdminService = {
     return count || 0;
   },
   getGlobalCounts: async () => {
-    // Utilisation de .select avec head:true pour un comptage propre et performant
     const [andromeda, creative] = await Promise.all([
       supabase.from('audits').select('*', { count: 'exact', head: true }).or('type.eq.ANDROMEDA,type.is.null'),
       supabase.from('audits').select('*', { count: 'exact', head: true }).eq('type', 'CREATIVE')
@@ -162,12 +185,10 @@ export const AdminService = {
     };
   },
   getGlobalLeads: async (): Promise<LeadData[]> => {
-    // Récupération de tous les profils (Pipeline CRM)
     const { data: profiles, error: pError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (pError) throw pError;
 
     const leads: LeadData[] = [];
-    // Récupération massive des derniers audits pour éviter le N+1
     const { data: audits } = await supabase.from('audits').select('*').order('created_at', { ascending: false });
 
     for (const p of (profiles || [])) {
@@ -182,8 +203,8 @@ export const AdminService = {
           createdAt: p.created_at,
           consultingValue: p.consulting_value || 0,
           purchasedProducts: p.purchased_products || [],
-          shop_name: p.shop_name,
-          shop_url: p.shop_url,
+          brand_name: p.brand_name,
+          website_url: p.website_url,
           shop_logo: p.shop_logo,
           niche: p.niche,
           target_cpa: p.target_cpa
@@ -206,8 +227,6 @@ export const AdminService = {
     return leads;
   },
   getDatabaseLogs: async (limit: number = 300): Promise<any[]> => {
-    // JOINTURE MANUELLE : Correction de l'erreur "Could not find a relationship"
-    // On récupère d'abord les audits
     const { data: audits, error: aError } = await supabase
       .from('audits')
       .select('*')
@@ -217,16 +236,13 @@ export const AdminService = {
     if (aError) throw aError;
     if (!audits) return [];
 
-    // Puis on récupère tous les profils pour mapper les emails
     const { data: profiles } = await supabase.from('profiles').select('id, email, full_name');
     
-    // On fusionne les données en mémoire
     const enrichedAudits = audits.map(audit => ({
       ...audit,
       profiles: profiles?.find(p => p.id === audit.user_id) || { email: 'Inconnu', full_name: 'Visiteur' }
     }));
 
-    console.log("Données Admin récupérées (Jointure Manuelle):", enrichedAudits);
     return enrichedAudits;
   },
   updateLeadStatus: async (userId: string, status: string) => {

@@ -29,7 +29,7 @@ const TOOLTIPS: Record<string, string> = {
   vslRate: "Pourcentage de personnes regardant votre vidéo de vente jusqu'au bout.",
   hookRate: "Taux de rétention après les 3 premières secondes de vos vidéos.",
   upsellRate: "Taux d'adoption de vos offres complémentaires.",
-  closingRate: "Taux de transformation de vos appels de vente en clients.",
+  closingRate: "Taux d'transformation de vos appels de vente en clients.",
   stopRate: "Taux d'arrêt sur vos visuels dans le fil d'actualité.",
   churnRate: "Taux d'attrition mensuel de vos clients récurrents.",
   cpl: "Coût par Prospect (Lead).",
@@ -184,15 +184,15 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({
   if (isLive) return <div className="animate-fade-in">{formBody}</div>;
 
   return (
-    <form onSubmit={onValidate} className="bg-white p-8 md:p-14 rounded-[3.5rem] shadow-2xl border border-slate-100 space-y-12 max-w-5xl mx-auto relative">
-      <div className="text-center mb-4">
+    <form onSubmit={onValidate} className="bg-white p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl border border-slate-100 space-y-8 md:space-y-12 max-w-5xl mx-auto relative">
+      <div className="text-center mb-2">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">Audit Stratégique AdsPilot Pro</p>
       </div>
       <div className="lg:pl-4">
         {formBody}
       </div>
-      <div className="pt-8">
-        <button type="submit" className="w-full bg-slate-900 text-white py-8 rounded-[2rem] font-black text-2xl hover:bg-indigo-600 transition-all uppercase tracking-widest italic shadow-2xl active:scale-95 group">
+      <div className="pt-4 md:pt-8">
+        <button type="submit" className="w-full bg-slate-900 text-white py-6 md:py-8 rounded-[1.5rem] md:rounded-[2rem] font-black text-xl md:text-2xl hover:bg-indigo-600 transition-all uppercase tracking-widest italic shadow-2xl active:scale-95 group">
           Lancer l'Audit Andromeda
           <span className="inline-block ml-3 group-hover:translate-x-2 transition-transform">&rarr;</span>
         </button>
