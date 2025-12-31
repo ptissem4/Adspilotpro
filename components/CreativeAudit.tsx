@@ -1,28 +1,26 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ExpertAvatar } from './UserDashboard.tsx';
 import { AuthService, AuditService } from '../services/storage.ts';
 import { VisionService } from '../services/genai.ts';
 import { CalculatorInputs } from '../types.ts';
 
 const CHECKLIST_ITEMS = [
-  { id: 'contrast', label: 'Contraste Fort', category: 'Le Visuel', why: 'Arrêt du scroll garanti.' },
-  { id: 'human', label: 'Visage Humain', category: 'Le Visuel', why: 'Connexion émotionnelle.' },
-  { id: 'text', label: 'Texte Minimal', category: 'Le Visuel', why: 'Diffusion algorithmique.' },
-  { id: 'benefit', label: 'Bénéfice "Coup de Poing"', category: 'Le Message', why: 'Compréhension immédiate.' },
-  { id: 'social', label: 'Preuve Sociale', category: 'Le Message', why: 'Crédibilité instantanée.' },
-  { id: 'scarcity', label: 'Urgence / Rareté', category: 'Le Message', why: 'Peur de rater (FOMO).' },
-  { id: 'direct', label: 'Lien Direct', category: 'Le Tunnel', why: 'Baisse du taux de rebond.' },
-  { id: 'cohesion', label: 'Cohérence Visuelle', category: 'Le Tunnel', why: 'Mise en confiance.' },
-  { id: 'mobile', label: 'Format Mobile (9:16)', category: 'La Technique', why: 'Expérience fluide.' },
-  { id: 'subs', label: 'Son & Sous-titres', category: 'La Technique', why: 'Captation des "muets".' },
+  { id: 'contrast', label: 'Contraste Fort' },
+  { id: 'human', label: 'Visage Humain' },
+  { id: 'text', label: 'Texte Minimal' },
+  { id: 'benefit', label: 'Bénéfice Clair' },
+  { id: 'social', label: 'Preuve Sociale' },
+  { id: 'scarcity', label: 'Urgence / Rareté' },
+  { id: 'direct', label: 'Lien Direct' },
+  { id: 'cohesion', label: 'Cohérence Visuelle' },
+  { id: 'mobile', label: 'Format Mobile' },
+  { id: 'subs', label: 'Son & Subs' },
 ];
 
 export const CreativeAudit: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState('image/jpeg');
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
@@ -37,7 +35,6 @@ export const CreativeAudit: React.FC = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setMimeType(file.type);
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -55,8 +52,8 @@ export const CreativeAudit: React.FC = () => {
     setIsSaved(false);
     
     const progressInterval = setInterval(() => {
-      setScanProgress(prev => (prev < 95 ? prev + Math.random() * 5 : prev));
-    }, 150);
+      setScanProgress(prev => (prev < 90 ? prev + 1 : prev));
+    }, 100);
 
     try {
       const pureBase64 = base64Data.split(',')[1];
@@ -65,16 +62,10 @@ export const CreativeAudit: React.FC = () => {
       clearInterval(progressInterval);
       setScanProgress(100);
 
-      // Mise à jour sécurisée des scores
-      const h = data.hookScore ?? 5;
-      const o = data.offerScore ?? 5;
-      const d = data.desirabilityScore ?? 5;
-      
-      setHookScore(h);
-      setOfferScore(o);
-      setDesirabilityScore(d);
+      setHookScore(data.hookScore || 5);
+      setOfferScore(data.offerScore || 5);
+      setDesirabilityScore(data.desirabilityScore || 5);
 
-      // Mapping de la checklist
       const newChecked = new Set<string>();
       if (data.checklist) {
         Object.keys(data.checklist).forEach(key => {
@@ -82,62 +73,51 @@ export const CreativeAudit: React.FC = () => {
         });
       }
       setCheckedItems(newChecked);
-      setAiVerdict(data.verdict || "Analyse terminée.");
+      setAiVerdict(data.verdict || "Analyse complétée.");
 
-      // Sauvegarde automatique pour le cockpit d'Alexia
+      // Sauvegarde automatique
       const user = AuthService.getCurrentUser();
       if (user) {
-        setIsSaving(true);
-        const timestamp = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const autoName = `Scan Vision - ${timestamp}`;
-        
-        const weightedAvg = (h * 0.4 + o * 0.3 + d * 0.3);
+        const weightedAvg = (data.hookScore * 0.4 + data.offerScore * 0.3 + data.desirabilityScore * 0.3);
         const ctr = ((weightedAvg / 10) * 2.2 + (newChecked.size * 0.1)).toFixed(2);
 
         const inputs: CalculatorInputs = {
-          name: autoName,
+          name: `Scan ${new Date().toLocaleTimeString()}`,
           type: 'CREATIVE',
-          creativeHookScore: h, 
-          creativeOfferScore: o, 
-          creativeDesirabilityScore: d, 
-          checklistScore: newChecked.size, 
-          creativeImageUrl: base64Data, 
+          creativeHookScore: data.hookScore,
+          creativeOfferScore: data.offerScore,
+          creativeDesirabilityScore: data.desirabilityScore,
+          checklistScore: newChecked.size,
+          creativeImageUrl: base64Data,
           currentCtr: ctr,
-          pmv: '0', margin: '0', targetRoas: '0', targetVolume: '0', currentCpa: '0', currentRoas: '0', currentBudget: '0', 
-          emqScore: (weightedAvg).toFixed(1),
-          niche: 'other', ltv: '0', creativeFormats: [], dataSource: 'manual' as const
-        };
-        
-        const results = { 
-          roasThreshold: 0, maxCpa: 0, targetCpa: 0, minWeeklyBudget: 0, budgetGap: 0, nicheRoas: 0, nicheCtr: 0, 
-          roasDiffBenchmark: 0, roasDiffTarget: 0, cpaStatus: 'good' as const, realMaxCpa: 0, learningPhaseBudget: 0, 
-          recommendationType: 'scale' as const, idealLearningCpa: 0, cpaReductionPercent: 0, ventesActuellesHebdo: 0, 
-          ventesCiblesHebdo: 0, ventesManquantes: 0, margeInitiale: 0, provisionParClient: 0, tresorerieLatenteHebdo: 0, 
-          andromedaOptimized: true, creativeDiversityScore: 100 
+          pmv: '0', margin: '0', targetRoas: '0', targetVolume: '0', currentCpa: '0', currentRoas: '0', currentBudget: '0',
+          emqScore: weightedAvg.toFixed(1),
+          niche: 'other', ltv: '0', creativeFormats: [], dataSource: 'manual'
         };
 
-        await AuditService.saveAudit(user, inputs, results, data.verdict || "Scan Validé", 'CREATIVE', autoName);
+        await AuditService.saveAudit(user, inputs, {} as any, data.verdict, 'CREATIVE', inputs.name);
         setIsSaved(true);
         window.dispatchEvent(new CustomEvent('auditSaved'));
       }
-
-    } catch (error) {
-      console.error("AI Analysis Error:", error);
+    } catch (error: any) {
       clearInterval(progressInterval);
-      setAiVerdict("Échec de l'analyse. Vérifiez votre connexion ou la taille de l'image.");
+      if (error.message === "API_KEY_ERROR") {
+        setAiVerdict("Erreur de configuration API. Veuillez sélectionner une clé valide.");
+        if ((window as any).aistudio?.openSelectKey) {
+          (window as any).aistudio.openSelectKey();
+        }
+      } else {
+        setAiVerdict("Échec de l'analyse multimodale. Veuillez réessayer.");
+      }
     } finally {
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setIsSaving(false);
-      }, 500);
+      setIsAnalyzing(false);
     }
   };
 
   const creativeResults = useMemo(() => {
     const weightedAvg = (hookScore * 0.4) + (offerScore * 0.3) + (desirabilityScore * 0.3);
     const estimatedCtr = (weightedAvg / 10) * 2.2 + (checklistScore * 0.1);
-    const signalScore = (hookScore + offerScore + desirabilityScore) / 3;
-    return { estimatedCtr, signalScore };
+    return { estimatedCtr };
   }, [hookScore, offerScore, desirabilityScore, checklistScore]);
 
   return (
@@ -148,9 +128,7 @@ export const CreativeAudit: React.FC = () => {
            <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none text-white">Audit <span className="text-indigo-400">Créatif Automatisé</span></h2>
         </div>
         <div className="flex items-center gap-4">
-           {isSaved && (
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest animate-fade-in">✓ Archivé</span>
-           )}
+           {isSaved && <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest animate-fade-in">✓ Archivé</span>}
            <button 
             onClick={() => { (window as any).setAppMode('user_dashboard'); setTimeout(() => window.dispatchEvent(new CustomEvent('setDashboardTab', { detail: 'history' })), 50); }}
             className="px-6 py-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-indigo-500 transition-all"
@@ -225,7 +203,7 @@ export const CreativeAudit: React.FC = () => {
                  <div className="space-y-4 flex-1">
                     <div>
                        <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.5em] mb-1">Verdict de l'Architecte</h4>
-                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic">Analyse en temps réel via Gemini 3 Vision Engine.</p>
+                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic">Analyse via Gemini Vision Engine.</p>
                     </div>
                     <div className="relative min-h-[60px] flex items-center">
                       {isAnalyzing ? (
