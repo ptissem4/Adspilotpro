@@ -1,12 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Fix: Initializing with process.env.API_KEY directly as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // Fix: Using generateContent with correct parameters structure as per guidelines
+    // Initialisation locale pour éviter le crash au chargement si process.env n'est pas encore injecté
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -64,7 +63,6 @@ Format de sortie : Renvoie uniquement un objet JSON contenant les scores, les ca
       }
     });
 
-    // Fix: Use the .text property directly as per Google GenAI guidelines
     return JSON.parse(response.text || '{}');
   }
 };
