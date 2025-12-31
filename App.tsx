@@ -77,8 +77,11 @@ export default function App() {
     return null;
   };
 
+  // Les dashboards gèrent leur propre scroll interne, mais la Landing et Boutique doivent scroller normalement.
+  const isScrollLocked = appMode === 'user_dashboard' || appMode === 'admin_dashboard';
+
   return (
-    <div className={`h-screen flex flex-col overflow-hidden relative ${appMode === 'user_dashboard' ? (theme === 'dark' ? 'bg-[#050505]' : 'bg-[#F8F9FA]') : 'bg-slate-50'}`}>
+    <div className={`relative flex flex-col ${isScrollLocked ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto'} ${appMode === 'user_dashboard' ? (theme === 'dark' ? 'bg-[#050505]' : 'bg-[#F8F9FA]') : 'bg-slate-50'}`}>
       {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-2xl bg-slate-900 text-white border border-slate-700 animate-fade-in flex items-center gap-4"><span className="font-black text-[11px] uppercase tracking-widest">{toast.msg}</span></div>}
       {showAuthModal && <AuthGate onAuthenticated={handleAuthenticated} onCancel={() => setShowAuthModal(false)} />}
       {renderContent()}
