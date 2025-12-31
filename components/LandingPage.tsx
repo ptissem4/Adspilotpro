@@ -53,30 +53,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
               Système d'Exploitation ROI v6.2
            </div>
            <h1 className="text-4xl md:text-[6.5rem] font-black tracking-tighter text-[#1E293B] mb-8 md:mb-12 leading-[0.9] uppercase italic">
-             L'ARCHITECTURE <br/>
-             DE SCALING <br/>
-             <span className="text-[#6366F1]">DÉFINITIVE.</span>
+             ARRÊTEZ DE PILOTER <br/>
+             VOTRE CROISSANCE <br/>
+             <span className="text-[#6366F1]">DANS LE NOIR.</span>
            </h1>
-           <p className="text-lg md:text-2xl text-[#64748B] max-w-3xl mx-auto mb-12 md:mb-20 leading-relaxed font-medium italic">
-             Passez de l'amateurisme à la rigueur scientifique. AdsPilot Pro est l'armure technologique conçue pour transformer vos campagnes Meta en Empire.
+           <p className="text-lg md:text-2xl text-[#64748B] max-w-4xl mx-auto mb-12 md:mb-20 leading-relaxed font-medium italic">
+             Accédez à l'infrastructure décisionnelle du top 1% des annonceurs. Pilotez votre rentabilité nette, auditez vos créas par IA et simulez votre scale avec une précision chirurgicale.
            </p>
            <button 
               onClick={onStart}
               className="w-full md:w-auto bg-[#1E293B] text-white px-8 md:px-14 py-5 md:py-7 rounded-2xl text-lg md:text-xl font-black uppercase italic tracking-widest shadow-2xl hover:bg-[#6366F1] transition-all hover:-translate-y-1 active:scale-95"
             >
-              DÉPLOYER MON INFRASTRUCTURE &rarr;
+              LANCER MON DIAGNOSTIC GRATUIT &rarr;
             </button>
         </div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-indigo-50/30 rounded-full blur-[80px] md:blur-[120px] -z-0"></div>
       </section>
 
-      {/* GRID DES MODULES (RÉSUMÉ AVEC TITRE MASSIF) */}
+      {/* GRID DES MODULES (THE EMPIRE SUITE) */}
       <section className="py-20 md:py-48 bg-[#F8FAFC] border-y border-slate-100 relative overflow-hidden px-4">
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16 md:mb-24 space-y-4 md:space-y-6">
             <h2 className="text-[#6366F1] font-black uppercase text-[10px] md:text-xs tracking-[0.5em] italic">Infrastructure d'Empire</h2>
             <h3 className="text-4xl md:text-8xl font-black italic tracking-tighter uppercase leading-[0.85] text-[#1E293B]">
-              L'ARSENAL <br/> <span className="text-slate-400">TECHNOLOGIQUE.</span>
+              THE EMPIRE <br/> <span className="text-slate-400">SUITE.</span>
             </h3>
             <p className="text-base md:text-lg text-[#64748B] font-medium italic max-w-2xl mx-auto leading-relaxed">
               Six modules intégrés conçus pour sécuriser votre profit, valider vos actifs et simuler votre croissance avec une précision chirurgicale.
@@ -85,36 +85,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
              <ModuleSummaryCard 
-                title="ATLAS" 
-                desc="Le module qui traque chaque euro. Atlas ne se contente pas de lire tes données, il identifie tes pertes financières invisibles pour sécuriser ton profit net." 
+                title="ATLAS (P&L)" 
+                desc="Le Titan Financier. Ne vous fiez plus au ROAS menteur. Maîtrisez votre profit net réel après chaque dépense." 
                 icon="🌍" 
+                badge="Finance"
              />
              <ModuleSummaryCard 
-                title="ORACLE" 
-                desc="L'IA qui analyse tes publicités avant que l'algorithme Meta ne le fasse. Oracle détecte la puissance d'arrêt et la clarté de ton offre pour garantir un CTR optimal." 
+                title="ORACLE (VISION)" 
+                desc="L’Audit Créatif IA. Détectez instantanément pourquoi vos publicités ne convertissent pas avant de dépenser votre budget." 
                 icon="👁️" 
+                badge="Intelligence"
              />
              <ModuleSummaryCard 
-                title="MERCURY" 
-                desc="Simule tes profits à l'euro près. Mercury te permet de tester tes hypothèses de budget et de prédire tes revenus sans risquer ton capital." 
+                title="MERCURY (SCALE)" 
+                desc="Le Simulateur de Profit. Prédisez vos revenus à 30 jours et scalez sans jamais casser votre algorithme." 
                 icon="⚡" 
+                badge="Simulation"
              />
              <ModuleSummaryCard 
                 title="ANDROMEDA" 
-                desc="L'intelligence comparative. Analyse tes signaux Meta et identifie les goulots d'étranglement de ton scaling pour ne plus laisser la chance décider." 
+                desc="L'intelligence comparative. Analyse tes signaux Meta et identifie les goulots d'étranglement de ton scaling." 
                 icon="🌌" 
+                badge="KPI"
              />
              <ModuleSummaryCard 
                 title="AUDIT" 
-                desc="Le scanner 360° de votre tunnel. Identifiez les frictions qui tuent votre conversion et transformez vos prospects en clients dévoués." 
+                desc="Le scanner 360° de votre tunnel. Identifiez les frictions qui tuent votre conversion et transformez vos prospects." 
                 icon="📄" 
+                badge="CRO"
              />
              <SidebarPilotCard />
           </div>
         </div>
       </section>
 
-      {/* DOSSIERS CONFIDENTIELS (DÉTAILLÉS) */}
+      {/* DOSSIERS CONFIDENTIELS (RAPPORTS DE BATAILLE) */}
       <section className="py-20 md:py-56 bg-white overflow-hidden px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-24 md:mb-40 space-y-4">
@@ -133,8 +138,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 problem="Une marque de mode naviguait avec un ROAS de 3.5 mais voyait sa trésorerie fondre. Atlas a scanné les coûts cachés (logistique, retours, taxes) que Meta ignorait."
                 solution="L'interface a immédiatement isolé une fuite de 4 000€ mensuels. En pivotant vers une gestion 'Net Profit', le business est devenu sain en 7 jours."
                 metrics={[
-                  { label: "Pertes Stoppées", value: "+4 000€" },
-                  { label: "Marge Nette", value: "+18%" }
+                  { label: "Pertes Stoppées", value: "+4 000€", status: 'emerald' },
+                  { label: "Marge Nette", value: "+18%", status: 'emerald' }
                 ]}
                 side="right"
                 mockup={<AtlasSnippetDark />}
@@ -148,8 +153,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 problem="CTR stagnant à 0.80%. L'IA Oracle a scanné les actifs créatifs pour identifier les zones de friction et le manque d'impact émotionnel sur les 3 premières secondes."
                 solution="Le diagnostic a révélé un Hook Rate trop faible (pastille Orange). Après correction vers un format 9:16 contrasté, le CTR a bondi à 3.20%."
                 metrics={[
-                  { label: "CTR Final", value: "3.20%" },
-                  { label: "Hook Rate", value: "x4.2" }
+                  { label: "CTR Final", value: "3.20%", status: 'emerald' },
+                  { label: "Hook Rate", value: "x4.2", status: 'emerald' }
                 ]}
                 side="left"
                 mockup={<OracleSnippetDark />}
@@ -163,8 +168,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 problem="Peur du scaling vertical. Le client craignait qu'une hausse de budget ne détruise son ROI actuel. Mercury a simulé 14 scénarios de scale."
                 solution="Mercury a prédit un ROI de 4.5. Le déploiement réel à 5 000€/jour a confirmé une précision prédictive de 98% (ROI réel de 4.48)."
                 metrics={[
-                  { label: "ROI Prédit", value: "4.50" },
-                  { label: "ROI Réel", value: "4.48" }
+                  { label: "ROI Prédit", value: "4.50", status: 'emerald' },
+                  { label: "ROI Réel", value: "4.48", status: 'emerald' }
                 ]}
                 side="right"
                 mockup={<MercurySnippetDark />}
@@ -178,8 +183,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
                 problem="Absence de boussole. Comment savoir si votre CPA de 25€ est une victoire ou une faillite imminente par rapport à vos concurrents ?"
                 solution="Andromeda compare vos metrics aux leaders du top 1%. Le verdict a forcé un pivot immédiat sur une opportunité de scale non détectée."
                 metrics={[
-                  { label: "CPA Delta", value: "-12€" },
-                  { label: "Benchmark", value: "TOP 1%" }
+                  { label: "CPA Delta", value: "-12€", status: 'emerald' },
+                  { label: "Benchmark", value: "TOP 1%", status: 'emerald' }
                 ]}
                 side="left"
                 mockup={<AndromedaSnippetDark />}
@@ -208,7 +213,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
            <Logo iconOnly className="opacity-20 scale-75 md:scale-90" />
            <p className="text-[#64748B] font-bold text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] max-w-xs md:max-w-none">
-              © 2026 AdsPilot Pro — L'Architecture d'Expertise Meta.
+              © 2026 ADSPILOT PRO — ÉDITION ARCHITECTE.
            </p>
            <button onClick={onLogin} className="text-[10px] font-black uppercase tracking-widest text-[#6366F1] hover:text-[#1E293B] transition-colors italic">Command Center &rarr;</button>
         </div>
@@ -244,7 +249,7 @@ const DossierItem = ({ badge, title, problem, solution, metrics, side, mockup, c
            {metrics.map((m: any, idx: number) => (
               <div key={idx} className="space-y-1">
                  <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{m.label}</p>
-                 <p className="text-3xl md:text-5xl font-black text-[#6366F1] tracking-tighter italic leading-none">{m.value}</p>
+                 <p className={`text-3xl md:text-5xl font-black ${m.status === 'emerald' ? 'text-emerald-500' : 'text-[#6366F1]'} tracking-tighter italic leading-none`}>{m.value}</p>
               </div>
            ))}
         </div>
@@ -261,8 +266,9 @@ const DossierItem = ({ badge, title, problem, solution, metrics, side, mockup, c
   </div>
 );
 
-const ModuleSummaryCard = ({ title, desc, icon }: any) => (
-  <div className="p-8 md:p-10 bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] space-y-5 md:space-y-6 hover:border-[#6366F1] hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 group">
+const ModuleSummaryCard = ({ title, desc, icon, badge }: any) => (
+  <div className="p-8 md:p-10 bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] space-y-5 md:space-y-6 hover:border-[#6366F1] hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 group relative overflow-hidden">
+     <div className="absolute top-4 right-4"><span className="text-[8px] font-black uppercase tracking-widest bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full">{badge}</span></div>
      <div className="w-12 md:w-14 h-12 md:h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-xl md:text-2xl group-hover:bg-indigo-50 group-hover:scale-110 transition-all">{icon}</div>
      <div>
         <h5 className="text-xl font-black italic uppercase tracking-tighter text-[#1E293B] mb-2">{title}</h5>
@@ -283,7 +289,7 @@ const SidebarPilotCard = () => (
   </div>
 );
 
-/* --- UI SNIPPETS DARK MODE (Optimisés Responsives) --- */
+/* --- UI SNIPPETS DARK MODE (Diagnostic Machines) --- */
 
 const AtlasSnippetDark = () => (
   <div className="w-full max-w-sm md:max-w-lg bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.3)] border border-white/5 p-8 md:p-12 space-y-8 md:space-y-10 transform hover:scale-[1.03] transition-transform duration-700">
@@ -318,7 +324,7 @@ const OracleSnippetDark = () => (
         <div className="space-y-3 md:space-y-4">
            <div className="flex justify-between text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">
               <span>Hook Rate (3s)</span>
-              <span className="text-amber-500">Alerte Orange</span>
+              <span className="text-amber-500">Alerte Orange — 4.2</span>
            </div>
            <div className="h-2 md:h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
               <div className="h-full w-[42%] bg-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.5)]"></div>
@@ -327,7 +333,7 @@ const OracleSnippetDark = () => (
         <div className="space-y-3 md:space-y-4">
            <div className="flex justify-between text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">
               <span>Désirabilité</span>
-              <span className="text-emerald-500">Optimal</span>
+              <span className="text-emerald-500">Optimal — 9.5</span>
            </div>
            <div className="h-2 md:h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
               <div className="h-full w-[95%] bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
