@@ -120,10 +120,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
 
   useEffect(() => { 
     loadHistory(); 
+    
+    // Écouteur pour rafraîchir quand un audit est sauvegardé depuis un module
+    const handleRefresh = () => loadHistory(true);
+    window.addEventListener('auditSaved', handleRefresh);
+    
     const channel = supabase.channel(`sync_${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'audits', filter: `user_id=eq.${user.id}` }, 
       () => loadHistory(true)).subscribe();
-    return () => { supabase.removeChannel(channel); };
+      
+    return () => { 
+      window.removeEventListener('auditSaved', handleRefresh);
+      supabase.removeChannel(channel); 
+    };
   }, [user.id]);
 
   useEffect(() => {
@@ -133,15 +142,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
   }, []);
 
   const handleDelete = async (id: string) => {
-    // Suppression du window.confirm pour éviter le blocage de la sandbox
     setLoading(true);
     try {
-      // Appel au service dédié
       await AuditService.deleteAudit(id);
-      
-      // Mise à jour immédiate de l'état local pour fluidité totale
       setHistory(prev => prev.filter(a => a.id !== id));
-      
       if (viewingReport?.id === id) setViewingReport(null);
       if (onNotification) onNotification("Audit supprimé avec succès, Alexia", "success");
     } catch (err) {

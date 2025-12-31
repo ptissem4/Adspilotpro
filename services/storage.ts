@@ -13,11 +13,17 @@ const STORAGE_KEYS = {
 /**
  * 🛠️ SCRIPT DE MIGRATION SQL POUR L'EXPERT (À coller dans Supabase SQL Editor)
  * 
+ * -- Mise à jour des profils
  * ALTER TABLE profiles 
  * ADD COLUMN IF NOT EXISTS brand_name TEXT,
  * ADD COLUMN IF NOT EXISTS website_url TEXT,
  * ADD COLUMN IF NOT EXISTS niche TEXT,
  * ADD COLUMN IF NOT EXISTS target_cpa NUMERIC;
+ * 
+ * -- Mise à jour des audits pour supporter les nouveaux modules
+ * ALTER TABLE audits 
+ * ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'ANDROMEDA',
+ * ADD COLUMN IF NOT EXISTS name TEXT;
  */
 
 export const AuthService = {
@@ -65,7 +71,6 @@ export const AuthService = {
     }
   },
   updateBusiness: async (userId: string, updates: Partial<UserProfile>) => {
-    // Utilisation d'UPSERT pour garantir la création ou mise à jour liée à l'ID
     const { error } = await supabase.from('profiles').upsert({
       id: userId,
       brand_name: updates.brand_name,
@@ -78,7 +83,7 @@ export const AuthService = {
     
     if (error) {
       console.error("❌ ERREUR SUPABASE 400 - DÉTAILS CRITIQUES :");
-      console.dir(error); // Affiche l'objet d'erreur complet pour identifier le champ invalide
+      console.dir(error); 
       throw error;
     }
 
@@ -106,20 +111,21 @@ export const AuditService = {
       verdict_label: verdictLabel
     };
 
-    let serverId = 'local_' + Date.now();
-    try {
-      const { data, error } = await supabase.from('audits').insert(auditData).select().single();
-      if (!error && data) serverId = data.id;
-    } catch (e) {
-      console.error("Save Error:", e);
+    const { data, error } = await supabase.from('audits').insert(auditData).select().single();
+    
+    if (error) {
+      console.error("Supabase Save Error:", error);
+      throw error; // On propage l'erreur pour que l'UI ne dise pas "archivé" faussement
     }
+
+    const serverId = data.id;
 
     return { 
       id: serverId, 
       auditId: serverId.toString().split('-')[0].toUpperCase(), 
       userId: user.id, 
       name: name, 
-      date: new Date().toISOString(), 
+      date: data.created_at || new Date().toISOString(), 
       inputs: auditData.inputs, 
       results, 
       verdictLabel,

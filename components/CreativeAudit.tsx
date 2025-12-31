@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ExpertAvatar } from './UserDashboard';
-import { AuthService, AuditService } from '../services/storage';
-import { VisionService } from '../services/genai';
-import { CalculatorInputs } from '../types';
+import { ExpertAvatar } from './UserDashboard.tsx';
+import { AuthService, AuditService } from '../services/storage.ts';
+import { VisionService } from '../services/genai.ts';
+import { CalculatorInputs } from '../types.ts';
 
 const CHECKLIST_ITEMS = [
   { id: 'contrast', label: 'Contraste Fort', category: 'Le Visuel', why: 'Arrêt du scroll garanti.' },
@@ -25,6 +25,7 @@ export const CreativeAudit: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
   
   const [hookScore, setHookScore] = useState(5);
   const [offerScore, setOfferScore] = useState(5);
@@ -49,27 +50,33 @@ export const CreativeAudit: React.FC = () => {
 
   const startAiAnalysis = async (base64Data: string, type: string) => {
     setIsAnalyzing(true);
+    setScanProgress(0);
     setAiVerdict(null);
     setIsSaved(false);
+    
+    // Animation de progression simulée pour le feedback visuel
+    const progressInterval = setInterval(() => {
+      setScanProgress(prev => (prev < 90 ? prev + Math.random() * 15 : prev));
+    }, 200);
+
     try {
       const pureBase64 = base64Data.split(',')[1];
       const data = await VisionService.analyzeCreative(pureBase64, type);
       
+      // On termine l'animation de progression
+      clearInterval(progressInterval);
+      setScanProgress(100);
+
+      // Mise à jour des scores
       setHookScore(data.hookScore);
       setOfferScore(data.offerScore);
       setDesirabilityScore(data.desirabilityScore);
 
+      // Liaison des checkboxes
       const newChecked = new Set<string>();
-      if (data.checklist.contrast) newChecked.add('contrast');
-      if (data.checklist.human) newChecked.add('human');
-      if (data.checklist.text) newChecked.add('text');
-      if (data.checklist.benefit) newChecked.add('benefit');
-      if (data.checklist.social) newChecked.add('social');
-      if (data.checklist.scarcity) newChecked.add('scarcity');
-      if (data.checklist.direct) newChecked.add('direct');
-      if (data.checklist.cohesion) newChecked.add('cohesion');
-      if (data.checklist.mobile) newChecked.add('mobile');
-      if (data.checklist.subs) newChecked.add('subs');
+      Object.keys(data.checklist).forEach(key => {
+        if (data.checklist[key]) newChecked.add(key);
+      });
       setCheckedItems(newChecked);
       
       setAiVerdict(data.verdict);
@@ -107,13 +114,18 @@ export const CreativeAudit: React.FC = () => {
 
         await AuditService.saveAudit(user, inputs, results, data.verdict, 'CREATIVE', autoName);
         setIsSaved(true);
+        // On notifie le reste de l'app que les audits ont changé
+        window.dispatchEvent(new CustomEvent('auditSaved'));
       }
 
     } catch (error) {
       console.error("AI Analysis Error:", error);
+      clearInterval(progressInterval);
     } finally {
-      setIsAnalyzing(false);
-      setIsSaving(false);
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setIsSaving(false);
+      }, 500);
     }
   };
 
@@ -145,13 +157,14 @@ export const CreativeAudit: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* COLONNE GAUCHE : PROTOCOLE */}
         <div className="lg:col-span-4 space-y-8 animate-fade-in">
            <div className="bg-slate-900/60 border border-white/5 p-8 rounded-[3rem] shadow-2xl relative overflow-hidden">
               <div className="text-center mb-10"><h3 className="text-xl font-black uppercase italic tracking-widest text-white">Protocole de Validation</h3></div>
               <div className="space-y-3">
                  {CHECKLIST_ITEMS.map((item) => (
-                    <div key={item.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-500 ${checkedItems.has(item.id) ? 'bg-indigo-600/15 border-indigo-500' : 'bg-white/5 border-white/10 opacity-40'}`}>
-                       <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${checkedItems.has(item.id) ? 'bg-indigo-50 border-indigo-400' : 'border-white/20'}`}>{checkedItems.has(item.id) && <span className="text-white text-[10px] font-black">✓</span>}</div>
+                    <div key={item.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-500 ${checkedItems.has(item.id) ? 'bg-indigo-600/20 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-white/5 border-white/10 opacity-40'}`}>
+                       <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${checkedItems.has(item.id) ? 'bg-indigo-500 border-indigo-400' : 'border-white/20'}`}>{checkedItems.has(item.id) && <span className="text-white text-[10px] font-black">✓</span>}</div>
                        <p className={`text-[10px] font-black uppercase tracking-tight ${checkedItems.has(item.id) ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
                     </div>
                  ))}
@@ -159,36 +172,58 @@ export const CreativeAudit: React.FC = () => {
            </div>
         </div>
 
+        {/* COLONNE DROITE : VISUEL & SCORES */}
         <div className="lg:col-span-8 space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* ZONE D'UPLOAD AVEC LASER SCAN */}
               <div className={`bg-slate-900/60 border border-white/5 rounded-[3rem] aspect-square overflow-hidden flex items-center justify-center relative shadow-2xl transition-all ${isAnalyzing ? 'ring-4 ring-indigo-500' : ''}`}>
-                 {imagePreview ? <img src={imagePreview} className={`w-full h-full object-contain transition-all duration-1000 ${isAnalyzing ? 'scale-110 blur-[3px] brightness-50' : ''}`} /> : <div className="text-center opacity-20"><span className="text-8xl block mb-4">📸</span><p className="text-[10px] font-black uppercase tracking-widest">Cliquez pour scanner</p></div>}
+                 {imagePreview ? (
+                   <>
+                     <img src={imagePreview} className={`w-full h-full object-contain transition-all duration-1000 ${isAnalyzing ? 'scale-105 blur-[2px] brightness-75' : ''}`} />
+                     {isAnalyzing && (
+                       <>
+                         {/* Ligne Laser Scan */}
+                         <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                            <div className="w-full h-1 bg-indigo-500 shadow-[0_0_20px_#6366f1] absolute top-0 animate-[scan_2s_ease-in-out_infinite]"></div>
+                         </div>
+                         <div className="absolute inset-0 bg-indigo-500/10 z-10 animate-pulse"></div>
+                       </>
+                     )}
+                   </>
+                 ) : (
+                   <div className="text-center opacity-20"><span className="text-8xl block mb-4">📸</span><p className="text-[10px] font-black uppercase tracking-widest">Cliquez pour scanner</p></div>
+                 )}
+                 
                  {!isAnalyzing && <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />}
-                 {isAnalyzing && <div className="absolute inset-0 flex items-center justify-center z-30"><div className="bg-indigo-600 px-6 py-3 rounded-full text-[9px] font-black text-white uppercase animate-pulse">Vision Meta active...</div></div>}
+                 
+                 {isAnalyzing && (
+                   <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/40 backdrop-blur-[2px]">
+                      <div className="bg-indigo-600 px-6 py-3 rounded-full text-[9px] font-black text-white uppercase shadow-2xl mb-4 border border-indigo-400">Analyse des pixels en cours...</div>
+                      <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+                         <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${scanProgress}%` }}></div>
+                      </div>
+                   </div>
+                 )}
               </div>
 
+              {/* SCORES DYNAMIQUES */}
               <div className="space-y-8">
                  <div className="bg-slate-900/30 border border-white/5 p-8 rounded-[2.5rem] shadow-inner space-y-10">
-                    <div className="space-y-4">
-                       <div className="flex justify-between items-center"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">🪝 Score d'Arrêt</label><span className="text-2xl font-black italic text-indigo-400">{hookScore}/10</span></div>
-                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-[1000ms]" style={{ width: `${hookScore * 10}%` }}></div></div>
-                    </div>
-                    <div className="space-y-4">
-                       <div className="flex justify-between items-center"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">💡 Clarté Offre</label><span className="text-2xl font-black italic text-indigo-400">{offerScore}/10</span></div>
-                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-[1000ms]" style={{ width: `${offerScore * 10}%` }}></div></div>
-                    </div>
-                    <div className="space-y-4">
-                       <div className="flex justify-between items-center"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">🔥 Désirabilité</label><span className="text-2xl font-black italic text-indigo-400">{desirabilityScore}/10</span></div>
-                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-[1000ms]" style={{ width: `${desirabilityScore * 10}%` }}></div></div>
-                    </div>
+                    <ScoreRow label="🪝 Score d'Arrêt" score={hookScore} isAnalyzing={isAnalyzing} color="indigo" />
+                    <ScoreRow label="💡 Clarté Offre" score={offerScore} isAnalyzing={isAnalyzing} color="indigo" />
+                    <ScoreRow label="🔥 Désirabilité" score={desirabilityScore} isAnalyzing={isAnalyzing} color="indigo" />
                  </div>
-                 <div className="bg-indigo-600 p-10 rounded-[3rem] flex flex-col items-center justify-center text-center shadow-2xl">
+                 <div className="bg-indigo-600 p-10 rounded-[3rem] flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group">
+                    <div className={`absolute inset-0 bg-white/10 transition-transform duration-1000 ${isAnalyzing ? 'translate-x-full' : '-translate-x-full'}`}></div>
                     <p className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.4em] mb-4">CTR Théorique Estimé</p>
-                    <span className="text-7xl font-black italic tracking-tighter text-white tabular-nums">{creativeResults.estimatedCtr.toFixed(2)}%</span>
+                    <span className={`text-7xl font-black italic tracking-tighter text-white tabular-nums transition-all ${isAnalyzing ? 'blur-md scale-90 opacity-50' : 'opacity-100'}`}>
+                      {creativeResults.estimatedCtr.toFixed(2)}%
+                    </span>
                  </div>
               </div>
            </div>
 
+           {/* VERDICT DE L'IA */}
            <div className="bg-indigo-950/20 border border-indigo-500/20 p-10 rounded-[3.5rem] relative overflow-hidden group min-h-[240px] flex items-center">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10 w-full">
                  <ExpertAvatar className="w-24 h-24 shadow-2xl" />
@@ -197,14 +232,47 @@ export const CreativeAudit: React.FC = () => {
                        <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.5em] mb-1">Verdict de l'Architecte</h4>
                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic">Alexia a validé le potentiel de conversion de votre visuel.</p>
                     </div>
-                    <p className={`text-xl md:text-2xl text-white font-medium italic leading-relaxed transition-all duration-700 ${isAnalyzing ? 'opacity-20 blur-[1px]' : 'opacity-100'}`}>
-                       "{aiVerdict || "En attente de scan..."}"
-                    </p>
+                    <div className="relative">
+                      {isAnalyzing && (
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="flex gap-2">
+                             <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                             <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce delay-100"></div>
+                             <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce delay-200"></div>
+                          </div>
+                        </div>
+                      )}
+                      <p className={`text-xl md:text-2xl text-white font-medium italic leading-relaxed transition-all duration-700 ${isAnalyzing ? 'opacity-0' : 'opacity-100'}`}>
+                         "{aiVerdict || "En attente de scan..."}"
+                      </p>
+                    </div>
                  </div>
               </div>
            </div>
         </div>
       </div>
+      
+      <style>{`
+        @keyframes scan {
+          0%, 100% { top: 0%; }
+          50% { top: 100%; }
+        }
+      `}</style>
     </div>
   );
 };
+
+const ScoreRow = ({ label, score, isAnalyzing, color }: { label: string, score: number, isAnalyzing: boolean, color: string }) => (
+  <div className="space-y-4">
+     <div className="flex justify-between items-center">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</label>
+        <span className={`text-2xl font-black italic text-indigo-400 transition-all ${isAnalyzing ? 'opacity-20 animate-pulse' : 'opacity-100'}`}>{score}/10</span>
+     </div>
+     <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-indigo-500 transition-all duration-[1500ms] ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]" 
+          style={{ width: isAnalyzing ? '10%' : `${score * 10}%` }}
+        ></div>
+     </div>
+  </div>
+);
