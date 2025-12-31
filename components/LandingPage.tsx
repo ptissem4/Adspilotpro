@@ -244,7 +244,7 @@ const DossierItem = ({ badge, title, problem, solution, metrics, side, mockup, c
            {metrics.map((m: any, idx: number) => (
               <div key={idx} className="space-y-1">
                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{m.label}</p>
-                 <p className="text-5xl md:text-7xl font-black text-[#6366F1] tracking-tighter italic">{m.value}</p>
+                 <p className="text-4xl md:text-6xl font-black text-[#6366F1] tracking-tighter italic leading-none">{m.value}</p>
               </div>
            ))}
         </div>
