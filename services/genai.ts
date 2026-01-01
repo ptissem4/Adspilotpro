@@ -3,12 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // Initialisation avec la clé API injectée par l'environnement
+    // Initialisation
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-latest", // Modèle multimodal rapide
+        model: "gemini-2.0-flash", // Modèle le plus rapide et fiable pour Vision/JSON
         contents: {
           parts: [
             {
@@ -18,33 +18,40 @@ export const VisionService = {
               },
             },
             {
-              text: `Tu es l'intelligence artificielle "Vision" de ROAS-Garantie.
-Analyse cette publicité selon le Protocole Architecte.
+              text: `Tu es l'IA "Vision" de ROAS-Garantie. Analyse cette publicité (Meta/TikTok) selon le Protocole Architecte.
+              
+              TACHE UNIQUE : Renvoie un objet JSON valide décrivant la qualité de la publicité.
+              
+              RÈGLES STRICTES :
+              1. Ne mets PAS de balises markdown (pas de \`\`\`json).
+              2. Sois critique et dur sur les scores.
+              3. Analyse le texte dans l'image pour l'offre et le bénéfice.
 
-Tu dois renvoyer un JSON strict avec cette structure :
-{
-  "hookScore": number (0-10, impact visuel immédiat),
-  "offerScore": number (0-10, clarté de la proposition),
-  "desirabilityScore": number (0-10, esthétique et envie),
-  "checklist": {
-    "contrast": boolean,
-    "human": boolean,
-    "text": boolean (peu de texte ?),
-    "benefit": boolean (bénéfice clair ?),
-    "social": boolean (preuve sociale ?),
-    "scarcity": boolean (urgence ?),
-    "direct": boolean (CTA clair ?),
-    "cohesion": boolean,
-    "mobile": boolean (format vertical ?),
-    "subs": boolean (si applicable, sinon true)
-  },
-  "verdict": string (Une phrase courte et percutante style expert marketing, max 15 mots)
-}`
+              Structure attendue :
+              {
+                "hookScore": number (0-10, capacité à stopper le scroll),
+                "offerScore": number (0-10, clarté de la promesse),
+                "desirabilityScore": number (0-10, esthétique produit),
+                "checklist": {
+                  "contrast": boolean (image contrastée ?),
+                  "human": boolean (visage visible ?),
+                  "text": boolean (texte court/lisible ?),
+                  "benefit": boolean (bénéfice clair ?),
+                  "social": boolean (étoiles/avis visibles ?),
+                  "scarcity": boolean (urgence/promo ?),
+                  "direct": boolean (CTA ou produit clair ?),
+                  "cohesion": boolean (design pro ?),
+                  "mobile": boolean (format 9:16 ou 4:5 ?),
+                  "subs": boolean (si vidéo : sous-titres ? sinon true)
+                },
+                "verdict": string (Conseil stratégique court, max 15 mots, ton expert direct)
+              }`
             },
           ],
         },
         config: {
           responseMimeType: "application/json",
+          // Schema strict pour forcer la structure
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -74,10 +81,16 @@ Tu dois renvoyer un JSON strict avec cette structure :
         }
       });
 
-      const textOutput = response.text;
-      if (!textOutput) throw new Error("Réponse vide de l'IA.");
+      let textOutput = response.text || "{}";
       
-      return JSON.parse(textOutput.trim());
+      // NETTOYAGE CHIRURGICAL : On retire le markdown si l'IA en a mis malgré les consignes
+      textOutput = textOutput.trim();
+      if (textOutput.startsWith("```")) {
+        textOutput = textOutput.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
+      }
+
+      return JSON.parse(textOutput);
+
     } catch (error) {
       console.error("Vision AI Technical Error:", error);
       throw error;

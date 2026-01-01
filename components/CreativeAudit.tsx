@@ -26,11 +26,15 @@ export const CreativeAudit = () => {
   const [scores, setScores] = useState({ hook: 0, offer: 0, desire: 0 });
   const [verdict, setVerdict] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [ctrEstimated, setCtrEstimated] = useState<string>("0.00");
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setErrorMsg(null);
+      setVerdict(null); // Reset précédent
+      setChecklistData(null);
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -44,11 +48,15 @@ export const CreativeAudit = () => {
   const runAnalysis = async (base64: string, mimeType: string) => {
     setIsAnalyzing(true);
     setScanProgress(0);
+    setErrorMsg(null);
     
-    // Animation fake
+    // Animation de scan visuelle
     const interval = setInterval(() => {
-      setScanProgress(prev => (prev < 90 ? prev + 5 : prev));
-    }, 150);
+      setScanProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.floor(Math.random() * 5) + 1;
+      });
+    }, 200);
 
     try {
       const pureBase64 = base64.split(',')[1];
@@ -66,12 +74,14 @@ export const CreativeAudit = () => {
       setChecklistData(result.checklist);
       setVerdict(result.verdict);
 
-      // Save to history
+      // Save to history & Calculate stats
       saveAuditToHistory(base64, result);
       
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Échec de l'analyse Vision. Réessayez.");
+    } catch (err: any) {
+      clearInterval(interval);
+      setScanProgress(0);
+      console.error("Erreur Dashboard:", err);
+      setErrorMsg(err.message || "Le moteur Vision n'a pas pu décoder l'image. Essayez un fichier moins lourd (JPG/PNG).");
     } finally {
       setIsAnalyzing(false);
     }
@@ -81,24 +91,28 @@ export const CreativeAudit = () => {
     const user = AuthService.getCurrentUser();
     if (!user) return;
 
-    // Calcul d'un "CTR estimé" basé sur les scores
+    // Calcul d'un "CTR estimé" théorique basé sur les scores IA
     const avgScore = (data.hookScore + data.offerScore + data.desirabilityScore) / 3;
-    const estimatedCtr = (0.5 + (avgScore / 10) * 2.5).toFixed(2); // Entre 0.5% et 3.0%
+    const estimatedCtrVal = (0.5 + (avgScore / 10) * 2.5).toFixed(2); // Entre 0.5% et 3.0%
+    setCtrEstimated(estimatedCtrVal);
+    
     const emq = avgScore.toFixed(1);
 
     // Comptage checklist
     let checkCount = 0;
-    Object.values(data.checklist).forEach(v => { if(v) checkCount++; });
+    if (data.checklist) {
+        Object.values(data.checklist).forEach(v => { if(v) checkCount++; });
+    }
 
     const inputs: CalculatorInputs = {
-      name: `Scan Vision ${new Date().toLocaleTimeString()}`,
+      name: `Scan Vision ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}`,
       type: 'CREATIVE',
       creativeImageUrl: image,
       creativeHookScore: data.hookScore,
       creativeOfferScore: data.offerScore,
       creativeDesirabilityScore: data.desirabilityScore,
       checklistScore: checkCount,
-      currentCtr: estimatedCtr,
+      currentCtr: estimatedCtrVal,
       emqScore: emq,
       // Champs obligatoires dummy
       pmv: '0', margin: '0', targetRoas: '0', targetVolume: '0', currentCpa: '0', currentRoas: '0', 
@@ -115,7 +129,7 @@ export const CreativeAudit = () => {
 
     await AuditService.saveAudit(user, inputs, dummyResults, data.verdict, 'CREATIVE', inputs.name || 'Vision Scan');
     
-    // Déclenche le rafraîchissement de l'historique dans le dashboard parent
+    // Signal global pour rafraîchir l'historique
     window.dispatchEvent(new Event('auditSaved'));
   };
 
@@ -128,7 +142,7 @@ export const CreativeAudit = () => {
         </div>
         <h3 className="text-2xl font-black text-slate-100 uppercase italic tracking-tighter">Déposer votre Créative</h3>
         <p className="text-slate-500 font-medium italic mt-2">L'IA Vision attend votre fichier (JPG, PNG)</p>
-        {errorMsg && <p className="mt-6 text-red-500 font-bold bg-red-500/10 px-4 py-2 rounded-xl">{errorMsg}</p>}
+        {errorMsg && <p className="mt-6 text-red-400 font-bold bg-red-500/10 px-6 py-3 rounded-xl border border-red-500/20">{errorMsg}</p>}
       </div>
     );
   }
@@ -136,78 +150,99 @@ export const CreativeAudit = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 h-full">
       {/* GAUCHE : VISUEL + SCANNER */}
-      <div className="relative rounded-[3rem] overflow-hidden border border-slate-700 bg-black flex items-center justify-center group">
-        <img src={imagePreview} className={`w-full h-full object-contain transition-all duration-700 ${isAnalyzing ? 'opacity-50 blur-sm scale-105' : ''}`} alt="Upload" />
+      <div className="relative rounded-[3rem] overflow-hidden border border-slate-700 bg-black flex items-center justify-center group h-[600px]">
+        <img src={imagePreview} className={`w-full h-full object-contain transition-all duration-700 ${isAnalyzing ? 'opacity-30 blur-sm scale-105' : ''}`} alt="Upload" />
         
         {isAnalyzing && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-             <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
-               <div className="h-full bg-indigo-500 transition-all duration-200 ease-out" style={{ width: `${scanProgress}%` }}></div>
+             <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden mb-4 border border-white/10">
+               <div className="h-full bg-indigo-500 transition-all duration-200 ease-out shadow-[0_0_15px_rgba(99,102,241,0.8)]" style={{ width: `${scanProgress}%` }}></div>
              </div>
-             <p className="text-indigo-400 font-black uppercase tracking-widest text-xs animate-pulse">Analyse Vision en cours...</p>
+             <p className="text-indigo-400 font-black uppercase tracking-widest text-xs animate-pulse">Extraction des données...</p>
+             <p className="text-slate-500 font-medium text-[10px] mt-2 italic">{scanProgress}%</p>
              
-             {/* Scanner effect line */}
+             {/* Scanner line effect */}
              <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500/50 shadow-[0_0_50px_rgba(99,102,241,1)] animate-[scan_2s_infinite]"></div>
           </div>
         )}
 
         {!isAnalyzing && (
-          <div className="absolute bottom-6 left-6 right-6">
-             <label className="w-full bg-slate-900/90 backdrop-blur-md text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest border border-white/10 hover:bg-indigo-600 transition-all cursor-pointer flex items-center justify-center">
-               Scanner une autre image
-               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-             </label>
-          </div>
+            <>
+                {errorMsg ? (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-8 text-center">
+                        <div className="text-4xl mb-4">⚠️</div>
+                        <p className="text-red-400 font-bold mb-6">{errorMsg}</p>
+                        <label className="bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-xs cursor-pointer hover:bg-slate-200 transition-colors">
+                            Réessayer une autre image
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </label>
+                    </div>
+                ) : (
+                    <div className="absolute bottom-6 left-6 right-6 z-30">
+                        <label className="w-full bg-slate-900/90 backdrop-blur-md text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest border border-white/10 hover:bg-indigo-600 transition-all cursor-pointer flex items-center justify-center shadow-2xl">
+                        Scanner une autre image
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </label>
+                    </div>
+                )}
+            </>
         )}
       </div>
 
       {/* DROITE : RÉSULTATS */}
-      <div className="space-y-8 overflow-y-auto pr-2 scrollbar-hide">
+      <div className="space-y-8 overflow-y-auto pr-2 scrollbar-hide h-[600px]">
         {verdict ? (
-          <>
+          <div className="space-y-8 animate-fade-in">
+             {/* CTR CARD */}
+             <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20 group">
+                <div className="absolute top-0 right-0 p-10 opacity-10 text-9xl font-black italic group-hover:scale-110 transition-transform">%</div>
+                <div className="relative z-10 text-center">
+                   <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-200 mb-2">CTR Théorique Estimé</p>
+                   <p className="text-6xl font-black italic tracking-tighter">{ctrEstimated}%</p>
+                </div>
+             </div>
+
              {/* VERDICT CARD */}
-             <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
+             <div className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden">
                 <div className="relative z-10">
                    <div className="flex items-center gap-3 mb-4">
-                      <ExpertAvatar className="w-10 h-10" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Verdict Architecte</span>
+                      <ExpertAvatar className="w-8 h-8" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Verdict de l'Architecte</span>
                    </div>
-                   <p className="text-xl font-bold italic leading-relaxed">"{verdict}"</p>
+                   <p className="text-lg font-bold italic leading-relaxed text-slate-200">"{verdict}"</p>
                 </div>
-                <div className="absolute -bottom-10 -right-10 text-9xl opacity-10 rotate-12">👁️</div>
              </div>
 
              {/* SCORES GRID */}
-             <div className="grid grid-cols-3 gap-4">
-                <ResultScore label="Hook" score={scores.hook} color="text-amber-400" />
-                <ResultScore label="Offre" score={scores.offer} color="text-indigo-400" />
-                <ResultScore label="Désir" score={scores.desire} color="text-emerald-400" />
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ResultScore label="Score d'Arrêt" score={scores.hook} color="text-amber-400" />
+                <ResultScore label="Clarté Offre" score={scores.offer} color="text-indigo-400" />
+                <ResultScore label="Désirabilité" score={scores.desire} color="text-emerald-400" />
              </div>
 
              {/* CHECKLIST */}
-             <div className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-8">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Conformité Protocole</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+             <div className="bg-[#0F0F0F] border border-white/5 rounded-[2.5rem] p-8">
+                <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-4">Protocole 10 Points</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-4">
                    {CHECKLIST_ITEMS.map((item) => {
                       const isValid = checklistData && checklistData[item.id];
                       return (
                         <div key={item.id} className="flex items-center justify-between group">
                            <div className="flex items-center gap-3">
-                              <div className={`w-4 h-4 rounded-full flex items-center justify-center border ${isValid ? 'bg-emerald-500 border-emerald-500' : 'border-slate-700 bg-transparent'}`}>
-                                 {isValid && <span className="text-[8px] text-white font-black">✓</span>}
-                              </div>
-                              <span className={`text-[10px] font-bold uppercase ${isValid ? 'text-slate-200' : 'text-slate-600'}`}>{item.label}</span>
+                              <div className={`w-3 h-3 rounded-full flex items-center justify-center border ${isValid ? 'bg-emerald-500 border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'border-slate-800 bg-transparent'}`}></div>
+                              <span className={`text-[9px] font-bold uppercase ${isValid ? 'text-slate-300' : 'text-slate-600'}`}>{item.label}</span>
                            </div>
                         </div>
                       );
                    })}
                 </div>
              </div>
-          </>
+          </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-             <div className="text-6xl mb-4">🔮</div>
-             <p className="text-slate-400 font-medium italic">En attente du signal visuel...</p>
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-40 border-2 border-dashed border-white/5 rounded-[3rem]">
+             <div className="text-6xl mb-6 grayscale">🔮</div>
+             <p className="text-slate-400 font-medium italic text-sm uppercase tracking-widest">En attente du signal visuel...</p>
+             <p className="text-slate-600 text-[10px] mt-2 max-w-xs leading-relaxed">Le protocole Architecte scannera votre image pour prédire son potentiel de viralité.</p>
           </div>
         )}
       </div>
@@ -216,8 +251,14 @@ export const CreativeAudit = () => {
 };
 
 const ResultScore = ({ label, score, color }: { label: string, score: number, color: string }) => (
-  <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center">
-     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</span>
-     <span className={`text-3xl font-black italic ${color}`}>{score}<span className="text-sm opacity-50">/10</span></span>
+  <div className="bg-[#0F0F0F] border border-white/5 p-4 rounded-2xl flex flex-col items-center justify-center">
+     <div className="flex items-center gap-2 mb-2">
+        <span className={`w-1.5 h-1.5 rounded-full ${color.replace('text-', 'bg-')}`}></span>
+        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
+     </div>
+     <div className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
+        <div className={`h-full ${color.replace('text-', 'bg-')} transition-all duration-1000`} style={{ width: `${score * 10}%` }}></div>
+     </div>
+     <span className={`text-2xl font-black italic ${color}`}>{score}<span className="text-[10px] opacity-50 ml-0.5 text-slate-500">/10</span></span>
   </div>
 );
