@@ -3,12 +3,18 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // Initialisation
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // 1. Sécurisation de la clé API
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("Clé API manquante. Ajoutez 'API_KEY' dans vos variables d'environnement (.env).");
+    }
+
+    // 2. Initialisation du client
+    const ai = new GoogleGenAI({ apiKey });
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash", // Modèle le plus rapide et fiable pour Vision/JSON
+        model: "gemini-2.5-flash-latest", // Modèle Vision le plus stable actuellement
         contents: {
           parts: [
             {
@@ -20,38 +26,37 @@ export const VisionService = {
             {
               text: `Tu es l'IA "Vision" de ROAS-Garantie. Analyse cette publicité (Meta/TikTok) selon le Protocole Architecte.
               
-              TACHE UNIQUE : Renvoie un objet JSON valide décrivant la qualité de la publicité.
+              TACHE : Renvoie un objet JSON valide.
               
-              RÈGLES STRICTES :
-              1. Ne mets PAS de balises markdown (pas de \`\`\`json).
-              2. Sois critique et dur sur les scores.
-              3. Analyse le texte dans l'image pour l'offre et le bénéfice.
+              RÈGLES :
+              1. Pas de markdown (pas de \`\`\`json).
+              2. Sois critique.
+              3. Analyse l'image et le texte incrusté.
 
-              Structure attendue :
+              Structure JSON attendue :
               {
-                "hookScore": number (0-10, capacité à stopper le scroll),
-                "offerScore": number (0-10, clarté de la promesse),
-                "desirabilityScore": number (0-10, esthétique produit),
+                "hookScore": number (0-10),
+                "offerScore": number (0-10),
+                "desirabilityScore": number (0-10),
                 "checklist": {
-                  "contrast": boolean (image contrastée ?),
-                  "human": boolean (visage visible ?),
-                  "text": boolean (texte court/lisible ?),
-                  "benefit": boolean (bénéfice clair ?),
-                  "social": boolean (étoiles/avis visibles ?),
-                  "scarcity": boolean (urgence/promo ?),
-                  "direct": boolean (CTA ou produit clair ?),
-                  "cohesion": boolean (design pro ?),
-                  "mobile": boolean (format 9:16 ou 4:5 ?),
-                  "subs": boolean (si vidéo : sous-titres ? sinon true)
+                  "contrast": boolean,
+                  "human": boolean,
+                  "text": boolean,
+                  "benefit": boolean,
+                  "social": boolean,
+                  "scarcity": boolean,
+                  "direct": boolean,
+                  "cohesion": boolean,
+                  "mobile": boolean,
+                  "subs": boolean
                 },
-                "verdict": string (Conseil stratégique court, max 15 mots, ton expert direct)
+                "verdict": string (max 15 mots)
               }`
             },
           ],
         },
         config: {
           responseMimeType: "application/json",
-          // Schema strict pour forcer la structure
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -83,7 +88,7 @@ export const VisionService = {
 
       let textOutput = response.text || "{}";
       
-      // NETTOYAGE CHIRURGICAL : On retire le markdown si l'IA en a mis malgré les consignes
+      // Nettoyage de sécurité si le modèle ajoute quand même du markdown
       textOutput = textOutput.trim();
       if (textOutput.startsWith("```")) {
         textOutput = textOutput.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");

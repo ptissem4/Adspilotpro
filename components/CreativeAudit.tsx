@@ -81,7 +81,18 @@ export const CreativeAudit = () => {
       clearInterval(interval);
       setScanProgress(0);
       console.error("Erreur Dashboard:", err);
-      setErrorMsg(err.message || "Le moteur Vision n'a pas pu décoder l'image. Essayez un fichier moins lourd (JPG/PNG).");
+      
+      // Traduction conviviale des erreurs techniques
+      let msg = err.message || "Erreur inconnue.";
+      if (msg.includes("API Key") || msg.includes("API_KEY")) {
+        msg = "Clé API manquante. Veuillez configurer 'API_KEY' dans vos variables d'environnement.";
+      } else if (msg.includes("fetch")) {
+        msg = "Erreur de connexion réseau. Vérifiez votre internet.";
+      } else if (msg.includes("candidate")) {
+        msg = "L'IA n'a pas pu analyser cette image. Essayez-en une autre.";
+      }
+      
+      setErrorMsg(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -171,7 +182,7 @@ export const CreativeAudit = () => {
                 {errorMsg ? (
                     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-8 text-center">
                         <div className="text-4xl mb-4">⚠️</div>
-                        <p className="text-red-400 font-bold mb-6">{errorMsg}</p>
+                        <p className="text-red-400 font-bold mb-6 max-w-xs leading-relaxed">{errorMsg}</p>
                         <label className="bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-xs cursor-pointer hover:bg-slate-200 transition-colors">
                             Réessayer une autre image
                             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
