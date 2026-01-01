@@ -3,12 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // Initialisation conforme aux guidelines
+    // Initialisation avec la clé API injectée par l'environnement
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash-latest", // Modèle multimodal rapide
         contents: {
           parts: [
             {
@@ -18,19 +18,28 @@ export const VisionService = {
               },
             },
             {
-              text: `Tu es l'intelligence artificielle du module Audit Créatif d'AdPilot Pro, conçue par Alexia Kebir, Architecte Expert en Marketing Digital. Ton rôle est d'analyser l'image publicitaire fournie avec une rigueur absolue.
+              text: `Tu es l'intelligence artificielle "Vision" de ROAS-Garantie.
+Analyse cette publicité selon le Protocole Architecte.
 
-Ta mission :
-1. Analyse Visuelle : Scanne l'image pour détecter le contraste, la lisibilité, la présence humaine et la hiérarchie visuelle.
-2. Évaluation des 10 Points : Valide chaque critère de la Checklist de l'Architecte (contrast, human, text, benefit, social, scarcity, direct, cohesion, mobile, subs).
-3. Attribution des Scores (0-10) :
-   - hookScore : Capacité de l'image à arrêter le scroll immédiatement.
-   - offerScore : Compréhension de l'offre en moins d'une seconde.
-   - desirabilityScore : Qualité esthétique et attrait du produit.
-
-Ton Ton (Style Alexia) : Sois directe, professionnelle et sans complaisance. Si la créative est mauvaise, dis-le sans détour. Si elle a du potentiel, encourage le scaling mais reste exigeante sur les détails.
-
-Format de sortie : Renvoie UNIQUEMENT l'objet JSON pur, sans markdown, suivant le schéma défini.`,
+Tu dois renvoyer un JSON strict avec cette structure :
+{
+  "hookScore": number (0-10, impact visuel immédiat),
+  "offerScore": number (0-10, clarté de la proposition),
+  "desirabilityScore": number (0-10, esthétique et envie),
+  "checklist": {
+    "contrast": boolean,
+    "human": boolean,
+    "text": boolean (peu de texte ?),
+    "benefit": boolean (bénéfice clair ?),
+    "social": boolean (preuve sociale ?),
+    "scarcity": boolean (urgence ?),
+    "direct": boolean (CTA clair ?),
+    "cohesion": boolean,
+    "mobile": boolean (format vertical ?),
+    "subs": boolean (si applicable, sinon true)
+  },
+  "verdict": string (Une phrase courte et percutante style expert marketing, max 15 mots)
+}`
             },
           ],
         },
@@ -65,12 +74,12 @@ Format de sortie : Renvoie UNIQUEMENT l'objet JSON pur, sans markdown, suivant l
         }
       });
 
-      const textOutput = response.text || '{}';
-      // Nettoyage de sécurité si le modèle renvoie du markdown
-      const cleanedJson = textOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanedJson);
+      const textOutput = response.text;
+      if (!textOutput) throw new Error("Réponse vide de l'IA.");
+      
+      return JSON.parse(textOutput.trim());
     } catch (error) {
-      console.error("Vision AI Error Details:", error);
+      console.error("Vision AI Technical Error:", error);
       throw error;
     }
   }
