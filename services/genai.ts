@@ -1,32 +1,14 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-
-// 👇 VOTRE CLÉ API EST BIEN CONFIGURÉE ICI
-const MANUAL_API_KEY = "AIzaSyAuLchGrP71K7ranzDyFk2ehoxlXSdwxcI"; 
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // 1. Récupération de la clé API (Priorité : Variable d'env > Clé manuelle)
-    let apiKey = "";
-
-    // Tentative lecture process.env
-    try {
-      // @ts-ignore
-      if (typeof process !== "undefined" && process.env && process.env.API_KEY) {
-        apiKey = process.env.API_KEY;
-      }
-    } catch (e) {
-      // Ignorer si process non défini
-    }
-
-    // Fallback sur la clé manuelle si process.env est vide
-    if (!apiKey && MANUAL_API_KEY) {
-      apiKey = MANUAL_API_KEY;
-    }
+    // 1. Récupération de la clé API via variable d'environnement (Sécurisé pour Netlify)
+    const apiKey = process.env.API_KEY;
     
-    // Si aucune clé n'est trouvée, on bloque
+    // Si aucune clé n'est trouvée, on bloque avec un message clair pour le debugging
     if (!apiKey) {
-      throw new Error("Clé API manquante. Remplissez 'MANUAL_API_KEY' dans services/genai.ts ou configurez votre .env");
+      console.error("❌ ERREUR CONFIGURATION : API_KEY est manquante.");
+      throw new Error("Clé API manquante. Configurez API_KEY dans le dashboard Netlify ou votre fichier .env");
     }
 
     // 2. Initialisation du client en mode RÉEL
