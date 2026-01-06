@@ -3,6 +3,16 @@ import { CalculatorInputs, CalculationResults, SimulationHistory, UserProfile, L
 import { supabase, configDiagnostic } from './supabase';
 
 const ADMIN_EMAIL = 'shopiflight@gmail.com';
+
+// 📧 CONFIGURATION EMAIL (EmailJS)
+// 1. Créez un compte gratuit sur https://www.emailjs.com/
+// 2. Connectez votre service email (Gmail, Outlook...)
+// 3. Créez un template d'email avec les variables {{user_email}} et {{date}}
+// 4. Copiez vos clés ici :
+const EMAILJS_SERVICE_ID = "service_8ckuzhi";   // Ex: service_z3x4...
+const EMAILJS_TEMPLATE_ID = "template_mt5z067"; // Ex: template_a8b9...
+const EMAILJS_PUBLIC_KEY = "aXsosjwe1vFc";   // Ex: user_XyZ123... (Trouvable dans Account > API Keys)
+
 const STORAGE_KEYS = { 
   CURRENT_SESSION: 'ads_pilot_session', 
   AUDITS_LOCAL: 'ads_pilot_audits_local',
@@ -61,6 +71,57 @@ export const AuthService = {
     const user: UserProfile = { id: data.user.id, email: data.user.email!, full_name: firstName, role: role as 'admin' | 'user', createdAt: data.user.created_at, consultingValue: 0, purchasedProducts: [] };
     localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(user));
     return user;
+  },
+  addToWaitlist: async (email: string) => {
+    const cleanEmail = email.toLowerCase().trim();
+    
+    // 1. Sauvegarde Database (Prioritaire)
+    try {
+      const { error } = await supabase.from('profiles').upsert({ 
+        email: cleanEmail, 
+        status: 'waitlist',
+        role: 'user',
+        full_name: 'Pilote Waitlist' 
+      }, { onConflict: 'email', ignoreDuplicates: false });
+      
+      if (error) console.warn("Waitlist DB Warning:", error.message);
+    } catch (dbErr) {
+      console.warn("Waitlist DB Error", dbErr);
+    }
+
+    // 2. Notification Admin via Email (EmailJS API)
+    try {
+      if (EMAILJS_SERVICE_ID.includes("A_REMPLACER")) {
+        console.log("⚠️ EmailJS non configuré : l'email de notification n'a pas été envoyé.");
+        return;
+      }
+
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: EMAILJS_SERVICE_ID,
+          template_id: EMAILJS_TEMPLATE_ID,
+          user_id: EMAILJS_PUBLIC_KEY,
+          template_params: {
+            user_email: cleanEmail,
+            date: new Date().toLocaleString('fr-FR'),
+            source: "Waitlist Andromeda",
+            message: "Un nouveau prospect est prêt pour le scaling."
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur API EmailJS: ${response.statusText}`);
+      }
+      
+      console.log("✅ Notification Admin (Email) envoyée avec succès.");
+      
+    } catch (notifyErr) {
+      console.error("Échec de l'envoi de l'email de notification :", notifyErr);
+      // On ne bloque pas l'UI pour l'utilisateur, l'inscription en base a réussi.
+    }
   },
   recordPurchase: async (email: string, product: string) => {
     const { data: profile } = await supabase.from('profiles').select('*').eq('email', email.toLowerCase().trim()).maybeSingle();
@@ -231,6 +292,23 @@ export const AdminService = {
       });
     }
     return leads;
+  },
+  // Nouvelle méthode pour l'historique complet d'un utilisateur
+  getUserHistory: async (userId: string): Promise<SimulationHistory[]> => {
+    return AuditService.getAuditHistory(userId);
+  },
+  // Nouvelle méthode pour supprimer un lead
+  deleteUser: async (userId: string) => {
+    // Suppression des audits associés
+    await supabase.from('audits').delete().eq('user_id', userId);
+    // Suppression du profil
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+  },
+  // Nouvelle méthode pour mettre à jour un profil
+  updateLeadProfile: async (userId: string, updates: Partial<UserProfile> & { status?: string }) => {
+    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+    if (error) throw error;
   },
   getDatabaseLogs: async (limit: number = 300): Promise<any[]> => {
     const { data: audits, error: aError } = await supabase

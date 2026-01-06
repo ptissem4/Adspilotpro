@@ -1,53 +1,40 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
+// 👇 VOTRE CLÉ API EST BIEN CONFIGURÉE ICI
+const MANUAL_API_KEY = "AIzaSyAuLchGrP71K7ranzDyFk2ehoxlXSdwxcI"; 
+
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // 1. Récupération sécurisée de la clé (compatible navigateur)
+    // 1. Récupération de la clé API (Priorité : Variable d'env > Clé manuelle)
     let apiKey = "";
+
+    // Tentative lecture process.env
     try {
+      // @ts-ignore
       if (typeof process !== "undefined" && process.env && process.env.API_KEY) {
         apiKey = process.env.API_KEY;
       }
     } catch (e) {
-      // Ignorer l'erreur si process n'est pas défini
+      // Ignorer si process non défini
     }
 
-    // 2. MODE SIMULATION / DÉMO (Si pas de clé détectée)
-    // Cela permet à l'app de fonctionner immédiatement pour vous sans erreur
+    // Fallback sur la clé manuelle si process.env est vide
+    if (!apiKey && MANUAL_API_KEY) {
+      apiKey = MANUAL_API_KEY;
+    }
+    
+    // Si aucune clé n'est trouvée, on bloque
     if (!apiKey) {
-      console.log("ℹ️ Mode Simulation activé (Clé API non détectée)");
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulation du temps de calcul
-      
-      // Génération de résultats réalistes pour la démo
-      const randomScore = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-      
-      return {
-        hookScore: randomScore(7, 9),
-        offerScore: randomScore(6, 9),
-        desirabilityScore: randomScore(7, 10),
-        checklist: {
-          contrast: true,
-          human: true,
-          text: Math.random() > 0.3,
-          benefit: true,
-          social: Math.random() > 0.5,
-          scarcity: false,
-          direct: true,
-          cohesion: true,
-          mobile: true,
-          subs: true
-        },
-        verdict: "Mode Simulation : Visuel impactant. Le contraste est bon, pensez à ajouter une preuve sociale pour augmenter la confiance."
-      };
+      throw new Error("Clé API manquante. Remplissez 'MANUAL_API_KEY' dans services/genai.ts ou configurez votre .env");
     }
 
-    // 3. Mode Réel (Si clé présente)
+    // 2. Initialisation du client en mode RÉEL
     const ai = new GoogleGenAI({ apiKey });
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: {
           parts: [
             {
@@ -60,15 +47,15 @@ export const VisionService = {
               text: `Tu es l'IA "Vision" de ROAS-Garantie. Analyse cette publicité (Meta/TikTok).
               
               TACHE : Renvoie un objet JSON valide.
-              RÈGLES : Pas de markdown. Sois critique.
+              RÈGLES : Pas de markdown. Sois critique et dur sur la notation.
               
-              Structure JSON :
+              Structure JSON attendue :
               {
                 "hookScore": number (0-10),
                 "offerScore": number (0-10),
                 "desirabilityScore": number (0-10),
                 "checklist": { "contrast": boolean, "human": boolean, "text": boolean, "benefit": boolean, "social": boolean, "scarcity": boolean, "direct": boolean, "cohesion": boolean, "mobile": boolean, "subs": boolean },
-                "verdict": string (max 15 mots)
+                "verdict": string (max 15 mots, ton expert direct)
               }`
             },
           ],
@@ -105,21 +92,20 @@ export const VisionService = {
       });
 
       let textOutput = response.text || "{}";
-      textOutput = textOutput.trim();
-      if (textOutput.startsWith("```")) {
-        textOutput = textOutput.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
+      
+      // Extraction robuste du JSON (au cas où le modèle ajoute du texte avant/après)
+      const firstBrace = textOutput.indexOf('{');
+      const lastBrace = textOutput.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1) {
+          textOutput = textOutput.substring(firstBrace, lastBrace + 1);
       }
 
       return JSON.parse(textOutput);
 
     } catch (error) {
       console.error("Vision AI Technical Error:", error);
-      // En cas d'erreur technique réelle (réseau, quota), on fallback aussi sur une réponse par défaut
-      return {
-        hookScore: 0, offerScore: 0, desirabilityScore: 0,
-        checklist: {},
-        verdict: "Erreur de connexion IA. Vérifiez votre réseau."
-      };
+      throw error;
     }
   }
 };

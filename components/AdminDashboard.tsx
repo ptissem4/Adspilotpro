@@ -26,6 +26,116 @@ const ExpertAvatar = ({ className = "w-10 h-10", pulse = false }) => (
   </div>
 );
 
+// Composant pour le Drawer Historique Client
+const LeadDrawer = ({ lead, onClose }: { lead: LeadData, onClose: () => void }) => {
+  const [history, setHistory] = useState<SimulationHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const data = await AdminService.getUserHistory(lead.user.id);
+      setHistory(data);
+      setLoading(false);
+    };
+    fetchHistory();
+  }, [lead]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex justify-end">
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative w-full max-w-xl bg-white h-full shadow-2xl p-8 overflow-y-auto animate-fade-in">
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100">✕</button>
+        
+        <div className="mb-8">
+           <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-3xl shadow-inner">👤</div>
+              <div>
+                 <h2 className="text-2xl font-black uppercase text-slate-900 leading-none">{lead.user.full_name}</h2>
+                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mt-1">{lead.user.email}</p>
+              </div>
+           </div>
+           <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-xl">
+                 <p className="text-[10px] font-black uppercase text-slate-400">Marque</p>
+                 <p className="font-bold text-slate-900">{lead.user.brand_name || 'Non renseigné'}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl">
+                 <p className="text-[10px] font-black uppercase text-slate-400">Site Web</p>
+                 <a href={lead.user.website_url} target="_blank" className="font-bold text-indigo-600 truncate block">{lead.user.website_url || 'Non renseigné'}</a>
+              </div>
+           </div>
+        </div>
+
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 border-b pb-4 mb-6">Historique des Scans</h3>
+        
+        {loading ? (
+           <div className="text-center py-10 text-slate-400 animate-pulse">Chargement de la Timeline...</div>
+        ) : history.length === 0 ? (
+           <div className="text-center py-10 text-slate-400 italic">Aucune activité enregistrée.</div>
+        ) : (
+           <div className="space-y-6 relative border-l-2 border-slate-100 ml-3 pl-8">
+              {history.map((audit) => (
+                 <div key={audit.id} className="relative">
+                    <div className="absolute -left-[41px] top-1 w-5 h-5 rounded-full border-4 border-white bg-indigo-500 shadow-md"></div>
+                    <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                       <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">{audit.type || 'ANDROMEDA'}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">{new Date(audit.date).toLocaleDateString()}</span>
+                       </div>
+                       <h4 className="font-bold text-slate-900 mb-2">{audit.name}</h4>
+                       {audit.inputs?.currentBudget && (
+                          <div className="text-xs text-slate-600 bg-slate-50 inline-block px-2 py-1 rounded">
+                             Budget: {parseFloat(audit.inputs.currentBudget).toLocaleString()}€
+                          </div>
+                       )}
+                       <p className="mt-3 text-xs italic text-slate-500 border-t pt-2">Verdict: {audit.verdictLabel}</p>
+                    </div>
+                 </div>
+              ))}
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Modal d'édition
+const EditLeadModal = ({ lead, onClose, onSave }: { lead: LeadData, onClose: () => void, onSave: (id: string, data: any) => void }) => {
+  const [formData, setFormData] = useState({
+    full_name: lead.user.full_name || '',
+    email: lead.user.email || '',
+    status: lead.status || 'new'
+  });
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-fade-in">
+          <h3 className="text-xl font-black uppercase text-slate-900 mb-6">Modifier le Prospect</h3>
+          <div className="space-y-4">
+             <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Nom Complet</label>
+                <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className="w-full border rounded-xl p-3 mt-1 font-medium focus:ring-2 ring-indigo-500 outline-none" />
+             </div>
+             <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Statut</label>
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as LeadData['status']})} className="w-full border rounded-xl p-3 mt-1 font-medium focus:ring-2 ring-indigo-500 outline-none">
+                   <option value="new">Nouveau Prospect</option>
+                   <option value="waitlist">Waitlist Andromeda</option>
+                   <option value="contacted">Contacté</option>
+                   <option value="buyer">Client Actif</option>
+                   <option value="closed">Fermé / Perdu</option>
+                </select>
+             </div>
+          </div>
+          <div className="flex gap-4 mt-8">
+             <button onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Annuler</button>
+             <button onClick={() => onSave(lead.user.id, formData)} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg">Sauvegarder</button>
+          </div>
+       </div>
+    </div>
+  );
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLogout, onLeadsSeen }) => {
   const [activeTab, setActiveTab] = useState<'pipeline' | 'empire'>('empire');
   const [leads, setLeads] = useState<LeadData[]>([]);
@@ -36,6 +146,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   const [viewingAudit, setViewingAudit] = useState<SimulationHistory | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Nouveaux états pour le Pipeline amélioré
+  const [sortConfig, setSortConfig] = useState<{ key: 'budget' | 'date', direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
+  const [selectedLead, setSelectedLead] = useState<LeadData | null>(null);
+  const [editingLead, setEditingLead] = useState<LeadData | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -59,25 +174,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   };
 
   const handleDeleteAudit = async (id: string, e: React.MouseEvent) => {
-    console.log('GOUVERNEUR: ORDRE DE PURGE REÇU POUR ID:', id);
-    e.preventDefault();
-    e.stopPropagation();
-    
-    alert("Suppression Admin demandée pour ID: " + id);
+    e.preventDefault(); e.stopPropagation();
     if (!window.confirm("Gouverneur, purger cet audit définitivement de l'Empire ?")) return;
-    
     try {
       const { error } = await supabase.from('audits').delete().eq('id', id);
-      if (error) {
-        console.error("❌ ADMIN DELETE ERROR:", error);
-        alert("Action interdite ou erreur base : " + error.message);
-      } else {
-        console.log('✅ Audit purgé avec succès par le Gouverneur.');
-        setAllAudits(prev => prev.filter(a => a.id !== id));
-      }
-    } catch (e) {
-      console.error("❌ ERREUR ADMIN CRITIQUE:", e);
-    }
+      if (error) alert("Erreur: " + error.message);
+      else setAllAudits(prev => prev.filter(a => a.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
+  // Gestion CRUD Leads
+  const handleDeleteLead = async (id: string) => {
+    if (!window.confirm("⚠️ Attention Gouverneur : Cette action supprimera le client et tout son historique. Confirmer ?")) return;
+    try {
+      await AdminService.deleteUser(id);
+      setLeads(prev => prev.filter(l => l.user.id !== id));
+    } catch (e) { alert("Erreur lors de la suppression."); }
+  };
+
+  const handleUpdateLead = async (id: string, data: any) => {
+    try {
+      await AdminService.updateLeadProfile(id, data);
+      setEditingLead(null);
+      loadData(); // Recharger pour voir les changements
+    } catch (e) { alert("Erreur mise à jour."); }
   };
 
   useEffect(() => { 
@@ -102,8 +222,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     .slice(0, 15)
   , [allAudits, searchTerm]);
 
+  // Logique de tri pour le Pipeline
+  const sortedLeads = useMemo(() => {
+    let sorted = [...leads];
+    if (searchTerm) {
+       sorted = sorted.filter(l => l.user.email.toLowerCase().includes(searchTerm.toLowerCase()) || (l.user.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    
+    return sorted.sort((a, b) => {
+      if (sortConfig.key === 'budget') {
+        const budgetA = parseFloat(a.lastSimulation?.inputs?.currentBudget || '0');
+        const budgetB = parseFloat(b.lastSimulation?.inputs?.currentBudget || '0');
+        return sortConfig.direction === 'asc' ? budgetA - budgetB : budgetB - budgetA;
+      } else {
+        const dateA = new Date(a.user.createdAt).getTime();
+        const dateB = new Date(b.user.createdAt).getTime();
+        return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+    });
+  }, [leads, sortConfig, searchTerm]);
+
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'waitlist': return <span className="bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-purple-200">Waitlist</span>;
+      case 'buyer': return <span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-200">Client Actif</span>;
+      case 'contacted': return <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-200">Contacté</span>;
+      case 'closed': return <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-200">Perdu</span>;
+      default: return <span className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-200">Prospect</span>;
+    }
+  };
 
   const SidebarContent = () => (
     <div className="p-6 h-full flex flex-col">
@@ -134,6 +284,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
       
+      {/* Drawer & Modals */}
+      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />}
+      {editingLead && <EditLeadModal lead={editingLead} onClose={() => setEditingLead(null)} onSave={handleUpdateLead} />}
+
       <div className="md:hidden h-20 bg-slate-900 flex items-center justify-between px-6 shrink-0 z-50">
         <Logo className="invert brightness-0 scale-75" />
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-3 bg-white/5 rounded-xl text-white border border-white/10">
@@ -173,6 +327,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 md:space-y-12 bg-slate-100/50 scrollbar-hide">
              {activeTab === 'empire' ? (
+                // ... (SECTION EMPIRE EXISTANTE - inchangée visuellement mais conservée dans le rendu conditionnel)
                 <div className="space-y-8 md:space-y-12 animate-fade-in">
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
                       <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 border border-slate-200 shadow-sm flex items-center justify-between group relative overflow-hidden">
@@ -280,41 +435,103 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                    </div>
                 </div>
              ) : (
+                // --- SECTION PIPELINE AMÉLIORÉE ---
                 <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 overflow-hidden shadow-2xl animate-fade-in flex flex-col">
-                   <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                   {/* Header avec Filtres */}
+                   <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4">
                       <div className="flex items-center gap-4">
-                         <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-xl shadow-inner">🎯</div>
-                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-800 italic">Pipeline CRM</h3>
+                         <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-xl shadow-inner text-indigo-600">🎯</div>
+                         <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 italic">Pipeline CRM</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sortedLeads.length} Prospects Actifs</p>
+                         </div>
                       </div>
-                      <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{leads.length} Clients</p>
+                      
+                      {/* Toolbar de tri */}
+                      <div className="flex gap-2">
+                         <button 
+                            onClick={() => setSortConfig({ key: 'date', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}
+                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${sortConfig.key === 'date' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                         >
+                            📅 Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                         </button>
+                         <button 
+                            onClick={() => setSortConfig({ key: 'budget', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}
+                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${sortConfig.key === 'budget' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                         >
+                            💰 Budget {sortConfig.key === 'budget' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                         </button>
+                      </div>
                    </div>
+
                    <div className="overflow-x-auto scrollbar-hide">
                       <table className="min-w-full divide-y divide-slate-100">
                          <thead className="bg-slate-50">
                             <tr>
-                               <th className="px-6 md:px-8 py-4 md:py-6 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Client</th>
-                               <th className="px-6 md:px-8 py-4 md:py-6 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Budget</th>
-                               <th className="px-6 md:px-8 py-4 md:py-6 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Diagnostic</th>
+                               <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest pl-8">Client</th>
+                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Statut</th>
+                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Budget</th>
+                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Diagnostic</th>
+                               <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest pr-8">Actions</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-50">
-                            {leads.map((lead) => (
-                               <tr key={lead.user.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-6 md:px-8 py-4 md:py-6">
-                                     <div className="flex flex-col">
-                                        <span className="text-[10px] md:text-[11px] font-black uppercase text-slate-900 truncate max-w-[120px] md:max-w-none">{lead.user.full_name || 'Anonyme'}</span>
-                                        <span className="text-[8px] text-slate-400 italic truncate max-w-[120px] md:max-w-none">{lead.user.email}</span>
-                                     </div>
-                                  </td>
-                                  <td className="px-6 md:px-8 py-4 md:py-6 text-center">
-                                     <span className="text-[11px] md:text-[13px] font-black text-indigo-600">{lead.lastSimulation?.inputs?.currentBudget ? formatCurrency(parseFloat(lead.lastSimulation.inputs.currentBudget)) : 'N/A'}</span>
-                                  </td>
-                                  <td className="px-6 md:px-8 py-4 md:py-6 text-right">
-                                     <span className="text-[9px] md:text-[11px] font-black text-slate-900 uppercase truncate max-w-[80px] md:max-w-none block">{lead.lastSimulation?.name || '--'}</span>
-                                     <span className="text-[7px] md:text-[9px] text-slate-400 font-black italic">{lead.lastSimulation ? new Date(lead.lastSimulation.date).toLocaleDateString() : ''}</span>
-                                  </td>
-                               </tr>
-                            ))}
+                            {sortedLeads.map((lead) => {
+                               const budgetRaw = lead.lastSimulation?.inputs?.currentBudget;
+                               const budget = budgetRaw ? parseFloat(budgetRaw) : 0;
+                               
+                               return (
+                                  <tr key={lead.user.id} className="hover:bg-slate-50/80 transition-colors group">
+                                     <td className="px-6 py-4 pl-8">
+                                        <div className="flex items-center gap-3">
+                                           <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 uppercase">
+                                              {lead.user.full_name?.charAt(0) || lead.user.email.charAt(0)}
+                                           </div>
+                                           <div className="flex flex-col">
+                                              <span className="text-[11px] font-black uppercase text-slate-900 truncate max-w-[150px]">{lead.user.full_name || 'Anonyme'}</span>
+                                              <span className="text-[9px] text-slate-400 italic truncate max-w-[150px]">{lead.user.email}</span>
+                                           </div>
+                                        </div>
+                                     </td>
+                                     <td className="px-6 py-4 text-center">
+                                        {getStatusBadge(lead.status || 'new')}
+                                     </td>
+                                     <td className="px-6 py-4 text-center">
+                                        {budget > 0 ? (
+                                           <span className="text-xs font-black text-slate-900">{formatCurrency(budget)}</span>
+                                        ) : (
+                                           <span className="text-[9px] text-slate-300 italic">N/A</span>
+                                        )}
+                                     </td>
+                                     <td className="px-6 py-4 text-center">
+                                        <button 
+                                          onClick={() => setSelectedLead(lead)}
+                                          className="text-[9px] font-black text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100 uppercase tracking-widest"
+                                        >
+                                           Voir Historique &rarr;
+                                        </button>
+                                     </td>
+                                     <td className="px-6 py-4 pr-8 text-right">
+                                        <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                           <button 
+                                              onClick={() => setEditingLead(lead)}
+                                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all"
+                                              title="Éditer"
+                                           >
+                                              ✎
+                                           </button>
+                                           <button 
+                                              onClick={() => handleDeleteLead(lead.user.id)}
+                                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg border border-transparent hover:border-red-100 transition-all"
+                                              title="Supprimer"
+                                           >
+                                              🗑️
+                                           </button>
+                                        </div>
+                                     </td>
+                                  </tr>
+                               );
+                            })}
                          </tbody>
                       </table>
                    </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UserProfile, SimulationHistory, CalculatorInputs, CalculationResults } from '../types.ts';
 import { AuditService, AuthService } from '../services/storage.ts';
 import { supabase } from '../services/supabase.ts';
@@ -58,6 +58,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
   const [historyFilter, setHistoryFilter] = useState<AuditFilter>('ALL');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  
+  // Onboarding State
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [highlightSimulator, setHighlightSimulator] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const simulatorRef = useRef<HTMLDivElement>(null);
 
   const [businessData, setBusinessData] = useState({
     brand_name: user.brand_name || '',
@@ -77,6 +83,36 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
   const [simRetention, setSimRetention] = useState(15);
 
   const isDark = theme === 'dark';
+
+  // Responsive Check & Onboarding Check
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+
+    const hasSeenOnboarding = localStorage.getItem('adspilot_onboarding_seen');
+    if (!hasSeenOnboarding) {
+      setTimeout(() => setShowOnboarding(true), 500);
+    }
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleCloseOnboarding = () => {
+    localStorage.setItem('adspilot_onboarding_seen', 'true');
+    setShowOnboarding(false);
+    
+    // Effet de highlight sur le simulateur
+    setHighlightSimulator(true);
+    
+    // Scroll smooth vers le simulateur
+    if(simulatorRef.current) {
+      simulatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    setTimeout(() => {
+      setHighlightSimulator(false);
+    }, 2500);
+  };
 
   const filteredHistory = useMemo(() => {
     if (historyFilter === 'ALL') return history;
@@ -120,15 +156,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
 
   useEffect(() => { 
     loadHistory(); 
-    
-    // Écouteur pour rafraîchir quand un audit est sauvegardé depuis un module
     const handleRefresh = () => loadHistory(true);
     window.addEventListener('auditSaved', handleRefresh);
-    
     const channel = supabase.channel(`sync_${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'audits', filter: `user_id=eq.${user.id}` }, 
       () => loadHistory(true)).subscribe();
-      
     return () => { 
       window.removeEventListener('auditSaved', handleRefresh);
       supabase.removeChannel(channel); 
@@ -267,8 +299,93 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
     </button>
   );
 
+  const MobileMenu = () => (
+    <div className={`fixed inset-0 z-[200] ${isDark ? 'bg-[#050505]/95' : 'bg-white/95'} backdrop-blur-xl animate-fade-in flex flex-col`}>
+       <div className="flex items-center justify-between p-6 border-b border-white/5">
+          <Logo onClick={() => setIsMobileMenuOpen(false)} />
+          <button onClick={() => setIsMobileMenuOpen(false)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white text-xl">✕</button>
+       </div>
+       <div className="flex-1 overflow-y-auto p-6 space-y-2">
+          <SidebarItem icon="📊" label="Cockpit P&L" active={activeTab === 'cockpit'} isDark={isDark} onClick={() => { setActiveTab('cockpit'); setIsMobileMenuOpen(false); }} />
+          <SidebarItem icon="✨" label="Lancer Audit" active={activeTab === 'selection'} isDark={isDark} onClick={() => { setActiveTab('selection'); setIsMobileMenuOpen(false); }} />
+          <SidebarItem icon="📂" label="Mes Audits" active={activeTab === 'history'} isDark={isDark} onClick={() => { setActiveTab('history'); setIsMobileMenuOpen(false); }} />
+          <SidebarItem icon="🏢" label="Mon Business" active={activeTab === 'business'} isDark={isDark} onClick={() => { setActiveTab('business'); setIsMobileMenuOpen(false); }} />
+       </div>
+       <div className="p-6 border-t border-white/5">
+          <div className="flex items-center gap-3 mb-6">
+             <ExpertAvatar className="w-10 h-10" />
+             <div>
+                <p className={`text-[10px] font-black uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>{user.full_name || 'Architecte'}</p>
+                <p className="text-[8px] font-bold text-indigo-500 uppercase tracking-widest">Pilotage Expert</p>
+             </div>
+          </div>
+          <button onClick={onLogout} className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Déconnexion</button>
+       </div>
+    </div>
+  );
+
+  // BLOCS UI DÉCOUPÉS POUR LE RESPONSIVE
+  const InputSection = (
+    <div className={`p-8 rounded-[3rem] border transition-all duration-500 ${highlightSimulator ? 'ring-4 ring-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.6)] border-indigo-500' : (isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-xl shadow-slate-200/50')}`}>
+        <h3 className={`text-xl font-black uppercase italic border-b pb-6 mb-8 ${isDark ? 'text-indigo-400 border-white/10' : 'text-indigo-600 border-slate-100'} flex items-center gap-3`}>
+          <span className="text-2xl">🎛️</span>
+          <span>Paramètres Business</span>
+        </h3>
+        <div className="space-y-10">
+          <SimInput label="Prix de Vente" valueRaw={simPrice} unit="€" min={0} max={10000} step={1} onChange={setSimPrice} icon="🏷️" isDark={isDark} />
+          <SimInput label="Budget Mensuel" value={simBudget} unit="€" min={0} max={100} step={0.1} isLog onChange={(pos: number) => setSimBudget(positionToBudget(pos))} icon="💰" displayVal={formatCurrency(simBudget)} isDark={isDark} />
+          <SimInput label="CTR (Scan Créa)" valueRaw={simCtr} unit="%" min={0.1} max={10} step={0.1} onChange={setSimCtr} icon="🎨" isDark={isDark} />
+          <SimInput label="Coût Produit (COGS)" valueRaw={simCogs} unit="€" min={0} max={5000} step={1} onChange={setSimCogs} icon="🛠️" isDark={isDark} />
+          <SimInput label="Rétention Client" valueRaw={simRetention} unit="%" min={0} max={100} step={1} onChange={setSimRetention} icon="💎" isDark={isDark} />
+        </div>
+    </div>
+  );
+
+  const ResultCardsSection = (
+    <>
+      <div className="flex items-center gap-3 mb-2">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mode Simulation — Temps Réel</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <ResultCard label="Potentiel Profit Mensuel" value={formatCurrency(simulation.netProfit, true)} highlight={simulation.isLoss ? 'danger' : 'success'} sub="Basé sur vos paramètres" extra={`MARGE NETTE : ${simulation.revenue > 0 ? ((simulation.netProfit / simulation.revenue) * 100).toFixed(1) : 0}%`} isDark={isDark} />
+          <ResultCard label="ROAS de Sécurité" value={`${simulation.breakevenRoas.toFixed(2)}x`} highlight="indigo" sub="Seuil de rentabilité absolu" isDark={isDark} />
+          <ResultCard label="Volume Projeté" value={simulation.orders.toFixed(0)} highlight="none" sub="Commandes / Mois" extra={`CA TOTAL : ${formatCurrency(simulation.revenue, true)}`} isDark={isDark} />
+      </div>
+    </>
+  );
+
+  const RadarSection = (
+    <div className={`p-8 md:p-12 rounded-[3.5rem] border ${isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-xl shadow-slate-200/50'} flex flex-col md:flex-row items-center justify-between gap-12`}>
+        <div className="flex-1 space-y-6">
+            <h3 className={`text-2xl font-black uppercase italic ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>Radar <span className={isDark ? "text-white" : "text-[#0F172A]"}>de Santé</span></h3>
+            <p className={`text-xs font-medium italic leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              Cette visualisation compare la santé globale de votre écosystème actuel. Plus la surface est grande, plus votre business est résilient face aux fluctuations du marché.
+            </p>
+            <div className={`inline-block px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${isDark ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
+                Score Global : {Math.round((radarMetrics.reduce((a,b)=>a+b,0)/50)*100)}/100
+            </div>
+        </div>
+        <div className="w-full md:w-1/2 aspect-square max-w-[320px]">
+            <RadarChart metrics={radarMetrics} labels={['PROFIT', 'SCALE', 'CRÉA', 'LTV', 'DATA']} isDark={isDark} />
+        </div>
+    </div>
+  );
+
   return (
     <div className={`flex flex-col md:flex-row h-screen transition-colors duration-500 ${isDark ? 'bg-[#050505] text-slate-100' : 'bg-[#F9FAFB] text-[#0F172A]'} font-sans overflow-hidden`}>
+      
+      {/* HEADER MOBILE */}
+      <div className={`md:hidden h-20 px-6 border-b ${isDark ? 'border-white/5 bg-[#080808]' : 'border-slate-200 bg-white'} flex items-center justify-between shrink-0 z-30`}>
+         <Logo className="scale-75 origin-left" />
+         <button onClick={() => setIsMobileMenuOpen(true)} className={`p-2 rounded-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+         </button>
+      </div>
+
+      {isMobileMenuOpen && <MobileMenu />}
+
+      {/* SIDEBAR DESKTOP */}
       <aside className={`hidden md:flex w-64 border-r ${isDark ? 'border-white/5 bg-[#080808]' : 'border-[#E2E8F0] bg-white shadow-2xl shadow-slate-200/50'} flex-col shrink-0 z-40`}>
          <div className="p-8 flex-1 flex flex-col h-full overflow-y-auto">
             <div className="flex items-center gap-3 mb-12">
@@ -313,33 +430,55 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
                  <ModuleCard title="Module Atlas" desc="Test de Scalabilité." color="amber" isDark={isDark} onClick={() => setActiveTab('atlas')} />
               </div>
             ) : activeTab === 'cockpit' ? (
-              <div className="p-6 md:p-12 animate-fade-in space-y-12 pb-32 w-full">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                   <ResultCard label="Profit Net Réel" value={formatCurrency(simulation.netProfit, true)} highlight={simulation.isLoss ? 'danger' : 'success'} sub="Mensuel estimé" extra={`CPA CIBLE : ${formatCurrency(simulation.targetCpa)}`} isDark={isDark} />
-                   <ResultCard label="ROAS Point Mort" value={`${simulation.breakevenRoas.toFixed(2)}x`} highlight="indigo" sub="Seuil de rentabilité" isDark={isDark} />
-                   <ResultCard label="Commandes / Mois" value={simulation.orders.toFixed(0)} highlight="none" sub="Volume de transactions" extra={`CA TOTAL : ${formatCurrency(simulation.revenue, true)}`} isDark={isDark} />
+              <div className="p-6 md:p-12 animate-fade-in space-y-8 pb-32 w-full max-w-[1600px] mx-auto">
+                <div className="w-full bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-[2rem] p-8 md:p-10 mb-8 flex items-center justify-between shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                    <div className="relative z-10">
+                        <h1 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-white mb-2">
+                           Bienvenue, <span className="text-indigo-400">{user.full_name || 'Architecte'}</span>
+                        </h1>
+                        <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest max-w-2xl leading-relaxed">
+                           Prenez les commandes de votre rentabilité. Ajustez les paramètres de gauche pour voir instantanément l'impact sur vos projections financières.
+                        </p>
+                    </div>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                   <div className={`${isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-xl shadow-slate-200/50'} border p-12 rounded-[3.5rem] space-y-10`}>
-                      <h3 className={`text-xl font-black uppercase italic border-b pb-6 ${isDark ? 'text-indigo-400 border-white/10' : 'text-indigo-600 border-slate-100'}`}>Hardcore Simulator</h3>
-                      <div className="space-y-12">
-                        <SimInput label="Prix de Vente" valueRaw={simPrice} unit="€" min={0} max={10000} step={1} onChange={setSimPrice} icon="🏷️" isDark={isDark} />
-                        <SimInput label="Budget Mensuel" value={simBudget} unit="€" min={0} max={100} step={0.1} isLog onChange={(pos: number) => setSimBudget(positionToBudget(pos))} icon="💰" displayVal={formatCurrency(simBudget)} isDark={isDark} />
-                        <SimInput label="CTR (Scan Créa)" valueRaw={simCtr} unit="%" min={0.1} max={10} step={0.1} onChange={setSimCtr} icon="🎨" isDark={isDark} />
-                        <SimInput label="Coût Produit (COGS)" valueRaw={simCogs} unit="€" min={0} max={5000} step={1} onChange={setSimCogs} icon="🛠️" isDark={isDark} />
-                        <SimInput label="Rétention Client" valueRaw={simRetention} unit="%" min={0} max={100} step={1} onChange={setSimRetention} icon="💎" isDark={isDark} />
+
+                <div className="flex flex-col xl:flex-row gap-8 items-start">
+                   {/* MOBILE: Layout Stack (Résultats > Simulator > Radar) */}
+                   {/* DESKTOP: Layout 2 colonnes (Inputs | Résultats + Radar) */}
+                   
+                   {/* INPUTS CONTAINER: Order 2 on Mobile (Middle), Order 1 on Desktop (Left) */}
+                   <div className="w-full xl:w-1/3 shrink-0 flex flex-col gap-6 order-2 xl:order-1" ref={simulatorRef}>
+                      {InputSection}
+                   </div>
+
+                   {/* RESULTS CONTAINER: Order 1 on Mobile (Top), Order 2 on Desktop (Right) */}
+                   <div className="w-full xl:w-2/3 flex flex-col gap-8 order-1 xl:order-2">
+                      {/* Pour Mobile: Resultats puis Radar à la fin */}
+                      {/* Pour Desktop: Resultats puis Radar aussi */}
+                      {/* Le flex-col standard ici mettra Results en haut puis Radar en dessous, ce qui correspond à la demande Desktop */}
+                      {/* Mais sur Mobile, ce bloc entier est au dessus des inputs. */}
+                      {/* Donc on a: [Results + Radar] -> [Inputs]. C'est l'inverse de ce que veut le prompt pour le Radar. */}
+                      {/* Le prompt veut: KPIs -> Simulator -> Radar. */}
+                      
+                      {/* Solution pour MOBILE ONLY : Cacher le Radar ici et l'afficher après les inputs */}
+                      <div className="flex flex-col gap-8">
+                         {ResultCardsSection}
+                         <div className="hidden xl:block">
+                            {RadarSection}
+                         </div>
                       </div>
                    </div>
-                   <div className={`${isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-xl shadow-slate-200/50'} border p-12 rounded-[3.5rem] flex flex-col items-center justify-center gap-10 min-h-[600px]`}>
-                      <h3 className={`text-2xl font-black uppercase italic self-start ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>Radar <span className={isDark ? "text-white" : "text-[#0F172A]"}>Empire</span></h3>
-                      <div className="w-full aspect-square max-w-[420px]">
-                         <RadarChart metrics={radarMetrics} labels={['PROFIT', 'SCALE', 'CRÉA', 'LTV', 'DATA']} isDark={isDark} />
-                      </div>
+                   
+                   {/* RADAR MOBILE ONLY : Order 3 (Bottom) */}
+                   <div className="w-full order-3 xl:hidden">
+                      {RadarSection}
                    </div>
                 </div>
               </div>
             ) : activeTab === 'business' ? (
               <div className="p-8 md:p-16 max-w-5xl mx-auto animate-fade-in space-y-12 pb-32">
+                 {/* ... (Contenu Business inchangé) ... */}
                  <div className="flex flex-col gap-6">
                     <h1 className={`text-5xl md:text-7xl font-black italic uppercase tracking-tighter ${isDark ? 'text-white' : 'text-[#0F172A]'}`}>MON <span className="text-indigo-500">BUSINESS</span></h1>
                     <p className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium italic`}>Configurez votre infrastructure stratégique pour des diagnostics ultra-précis.</p>
@@ -464,6 +603,53 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
             ) : null}
          </div>
       </main>
+
+      {/* MODALE ONBOARDING RESPONSIVE */}
+      {showOnboarding && activeTab === 'cockpit' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in p-4">
+          <div className="bg-[#101010] border border-indigo-500/30 p-8 md:p-10 rounded-[2.5rem] w-[80%] max-w-lg shadow-2xl relative flex flex-col items-center text-center">
+            <button 
+              onClick={handleCloseOnboarding} 
+              className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div className="space-y-6">
+              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/30 text-3xl mx-auto">
+                🚀
+              </div>
+              
+              <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight leading-none">
+                {isMobile ? (
+                  <>
+                    Prêt pour le <br/> <span className="text-indigo-500">décollage ?</span>
+                  </>
+                ) : (
+                  <>
+                    Bienvenue dans ton cockpit ! <br/>
+                    <span className="text-indigo-500">Prêt à piloter ta rentabilité ?</span>
+                  </>
+                )}
+              </h2>
+              
+              <p className="text-slate-400 text-sm font-medium leading-relaxed italic">
+                {isMobile 
+                  ? "Prends les commandes : ajuste tes réglages dans le Simulator en bas de page pour voir tes profits s'envoler en temps réel."
+                  : "Ici, on ne subit pas les chiffres, on les dompte. Pour comprendre la puissance de ton outil, commence par manipuler le Hardcore Simulator : ajuste tes leviers et regarde tes profits se mettre à jour instantanément."
+                }
+              </p>
+              
+              <button 
+                onClick={handleCloseOnboarding}
+                className="w-full bg-white text-slate-900 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95"
+              >
+                {isMobile ? "C'est parti !" : "C'est parti, je simule ma croissance ! →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewingReport && (
         <div className="fixed inset-0 z-[1000] bg-black flex flex-col animate-fade-in overflow-hidden">

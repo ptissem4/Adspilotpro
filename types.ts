@@ -117,7 +117,7 @@ export interface NicheData {
 export interface LeadData {
   user: UserProfile;
   lastSimulation: SimulationHistory | null;
-  status: 'new' | 'contacted' | 'closed' | 'buyer';
+  status: 'new' | 'contacted' | 'closed' | 'buyer' | 'waitlist';
 }
 
 export interface Guide {

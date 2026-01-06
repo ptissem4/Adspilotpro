@@ -49,16 +49,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
       {/* HERO SECTION - ARCHITECT EDITION */}
       <section className="relative pt-32 md:pt-64 pb-20 md:pb-48 bg-white overflow-hidden text-center px-4">
         <div className="max-w-6xl mx-auto relative z-10">
-           <div className="inline-block px-4 py-1.5 bg-indigo-50 text-[#6366F1] rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] mb-8 md:mb-12 border border-indigo-100">
-              Système d'Exploitation ROI v6.2 — Édition Architecte
+           <div className="inline-block px-4 py-1.5 bg-indigo-50 text-[#4F46E5] rounded-full text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] mb-8 md:mb-12 border border-indigo-100 shadow-sm">
+              Système d'Exploitation ROI v6.2 — Édition Scaling
            </div>
            <h1 className="text-4xl md:text-[6.5rem] font-black tracking-tighter text-[#1E293B] mb-8 md:mb-12 leading-[0.9] uppercase italic">
              PILOTEZ VOTRE <br/>
              CROISSANCE À LA <br/>
              <span className="text-[#6366F1]">MARGE NETTE.</span>
            </h1>
-           <p className="text-lg md:text-2xl text-[#64748B] max-w-4xl mx-auto mb-12 md:mb-20 leading-relaxed font-medium italic">
-             Arrêtez de naviguer à l'aveugle avec le ROAS de Meta. Accédez à l'infrastructure qui audite vos créas par IA et sécurise votre rentabilité réelle.
+           <p className="text-lg md:text-2xl text-slate-700 max-w-4xl mx-auto mb-12 md:mb-20 leading-normal md:leading-relaxed font-medium italic">
+             Arrêtez de <span className="font-bold text-[#1E293B]">brûler votre cash</span> sur les metrics menteuses de Meta. Reprenez le contrôle avec l'infrastructure qui audite vos créas par IA et garantit chaque euro de votre <span className="font-bold text-[#6366F1]">marge nette</span>.
            </p>
            <button 
               onClick={onStart}
@@ -202,7 +202,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onBoutique, o
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
            <Logo iconOnly className="opacity-20 scale-75 md:scale-90" />
            <p className="text-[#64748B] font-bold text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] max-w-xs md:max-w-none">
-              © 2026 ADSPILOT PRO — ÉDITION ARCHITECTE.
+              © 2026 ADSPILOT PRO — ÉDITION SCALING.
            </p>
            <button onClick={onLogin} className="text-[10px] font-black uppercase tracking-widest text-[#6366F1] hover:text-[#1E293B] transition-colors italic">Command Center &rarr;</button>
         </div>

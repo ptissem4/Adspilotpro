@@ -120,7 +120,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLoadSimulation, on
       </nav>
 
       <main className="flex-1 overflow-y-auto">
-        {activeTab === 'guide' ? <AuditExplainer onBack={() => setActiveTab('history')} inputs={history[0]?.inputs} results={history[0]?.results} /> : activeTab === 'boutique' ? <Boutique onNotification={onNotification} /> : (
+        {activeTab === 'guide' ? <AuditExplainer onBack={() => setActiveTab('history')} inputs={history[0]?.inputs} results={history[0]?.results} /> : activeTab === 'boutique' ? <Boutique onNotification={onNotification} onBack={() => setActiveTab('history')} /> : (
           <div className="max-w-6xl mx-auto px-4 py-16 animate-fade-in">
              <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                  <div>

@@ -73,7 +73,7 @@ export default function App() {
     if (appMode === 'home') return <LandingPage onStart={() => currentUser ? setAppMode('user_dashboard') : setShowAuthModal(true)} onBoutique={() => setAppMode('boutique')} onLogin={() => setShowAuthModal(true)} currentUser={currentUser} onDashboard={() => setAppMode(currentUser?.role === 'admin' ? 'admin_dashboard' : 'user_dashboard')} newLeadsCount={newLeadsCount} />;
     if (appMode === 'admin_dashboard' && currentUser) return <AdminDashboard adminUser={currentUser} onLogout={handleLogout} />;
     if (appMode === 'user_dashboard' && currentUser) return <UserDashboard user={currentUser} latestAudit={latestAudit} onNewAudit={() => {}} onLogout={handleLogout} onConsulting={() => {}} onNotification={showNotification} theme={theme} onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')} />;
-    if (appMode === 'boutique') return <Boutique onNotification={showNotification} />;
+    if (appMode === 'boutique') return <Boutique onNotification={showNotification} onBack={() => setAppMode(currentUser ? (currentUser.role === 'admin' ? 'admin_dashboard' : 'user_dashboard') : 'home')} />;
     return null;
   };
 
