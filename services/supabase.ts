@@ -7,11 +7,15 @@ const getEnvValue = (key: string): string => {
       // @ts-ignore
       return import.meta.env[key];
     }
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      // @ts-ignore
+      return process.env[key];
+    }
   } catch (e) {}
   return '';
 };
 
-// Utilisation exclusive des variables d'environnement pour la sécurité
 const url = getEnvValue('VITE_SUPABASE_URL').replace(/\/$/, "");
 const key = getEnvValue('VITE_SUPABASE_ANON_KEY').trim();
 
@@ -21,7 +25,6 @@ export const configDiagnostic = {
   url: url
 };
 
-// Initialisation sécurisée
 export const supabase = createClient(
   configDiagnostic.hasUrl ? url : 'https://placeholder.supabase.co', 
   configDiagnostic.hasKey ? key : 'placeholder'
