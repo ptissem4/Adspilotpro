@@ -1,34 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Fonction utilitaire robuste pour récupérer la clé API sur Netlify/Vercel/Local
-const getApiKey = (): string | undefined => {
-  try {
-    // 1. Essayer via import.meta.env (Standard Vite / Netlify moderne)
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      // @ts-ignore
-      if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
-      // @ts-ignore
-      if (import.meta.env.API_KEY) return import.meta.env.API_KEY;
-    }
-  } catch (e) {
-    console.warn("⚠️ Impossible de lire les variables d'environnement");
-  }
-  return undefined;
-};
-
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    const apiKey = getApiKey();
-    
-    // Protection anti-crash : on ne lance pas l'appel si la clé est absente
-    if (!apiKey) {
-      console.error("❌ ERREUR CONFIGURATION : Aucune clé API trouvée (VITE_API_KEY ou API_KEY).");
-      throw new Error("Configuration manquante : Ajoutez VITE_API_KEY dans les réglages Netlify.");
-    }
-
-    // Initialisation du client
-    const ai = new GoogleGenAI({ apiKey });
+    // Initialisation conforme aux directives de sécurité : utilisation directe de process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
       const response = await ai.models.generateContent({

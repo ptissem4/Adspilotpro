@@ -14,9 +14,9 @@ const getEnvValue = (key: string): string => {
   return '';
 };
 
-const EMAILJS_SERVICE_ID = getEnvValue('VITE_EMAILJS_SERVICE_ID') || "service_8ckuzhi";
-const EMAILJS_TEMPLATE_ID = getEnvValue('VITE_EMAILJS_TEMPLATE_ID') || "template_mt5z067";
-const EMAILJS_PUBLIC_KEY = getEnvValue('VITE_EMAILJS_PUBLIC_KEY') || "aXsosjwe1vFc";
+const EMAILJS_SERVICE_ID = getEnvValue('VITE_EMAILJS_SERVICE_ID');
+const EMAILJS_TEMPLATE_ID = getEnvValue('VITE_EMAILJS_TEMPLATE_ID');
+const EMAILJS_PUBLIC_KEY = getEnvValue('VITE_EMAILJS_PUBLIC_KEY');
 
 const STORAGE_KEYS = { 
   CURRENT_SESSION: 'ads_pilot_session', 
@@ -93,22 +93,24 @@ export const AuthService = {
       }, { onConflict: 'email', ignoreDuplicates: false });
     } catch (e) {}
 
-    try {
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: EMAILJS_SERVICE_ID,
-          template_id: EMAILJS_TEMPLATE_ID,
-          user_id: EMAILJS_PUBLIC_KEY,
-          template_params: {
-            user_email: cleanEmail,
-            date: new Date().toLocaleString('fr-FR'),
-            source: "Waitlist Andromeda"
-          }
-        })
-      });
-    } catch (e) {}
+    if (EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+      try {
+        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: EMAILJS_SERVICE_ID,
+            template_id: EMAILJS_TEMPLATE_ID,
+            user_id: EMAILJS_PUBLIC_KEY,
+            template_params: {
+              user_email: cleanEmail,
+              date: new Date().toLocaleString('fr-FR'),
+              source: "Waitlist Andromeda"
+            }
+          })
+        });
+      } catch (e) {}
+    }
   },
   updateBusiness: async (userId: string, updates: Partial<UserProfile>) => {
     const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
@@ -120,7 +122,6 @@ export const AuthService = {
       localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(newUser));
     }
   },
-  // Added missing recordPurchase method used by ThankYouPage
   recordPurchase: async (email: string, product: string) => {
     const cleanEmail = email.toLowerCase().trim();
     const { data: profile } = await supabase.from('profiles').select('*').eq('email', cleanEmail).maybeSingle();
