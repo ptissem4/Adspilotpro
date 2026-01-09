@@ -3,12 +3,23 @@ import { supabase, configDiagnostic } from './supabase';
 
 const ADMIN_EMAIL = 'shopiflight@gmail.com';
 
+/**
+ * Récupère de manière sécurisée une variable d'environnement
+ * en essayant import.meta.env (Vite) puis process.env (Node/Netlify/Vercel)
+ */
 const getEnvValue = (key: string): string => {
   try {
+    // Tentative via Vite
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
       // @ts-ignore
       return import.meta.env[key];
+    }
+    // Repli via process.env (Standard)
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      // @ts-ignore
+      return process.env[key];
     }
   } catch (e) {}
   return '';
