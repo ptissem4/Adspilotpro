@@ -2,13 +2,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // Initialisation conforme aux directives de sécurité : utilisation directe de process.env.API_KEY
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // CORRECTION : Utilisation de import.meta.env pour Vite + fallback de sécurité
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("Clé API manquante. Vérifiez la configuration Netlify.");
+    }
+
+    const ai = new GoogleGenAI(apiKey); // Utilisation simplifiée
     
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: {
+      const model = ai.getGenerativeModel({ 
+        model: "gemini-2.0-flash", // Utilisation de la version stable 2.0
+      });
+
+      const result = await model.generateContent({
+        contents: [{
+          role: "user",
           parts: [
             {
               inlineData: {
@@ -24,56 +34,21 @@ export const VisionService = {
               
               Structure JSON attendue :
               {
-                "hookScore": number (0-10),
-                "offerScore": number (0-10),
-                "desirabilityScore": number (0-10),
+                "hookScore": number,
+                "offerScore": number,
+                "desirabilityScore": number,
                 "checklist": { "contrast": boolean, "human": boolean, "text": boolean, "benefit": boolean, "social": boolean, "scarcity": boolean, "direct": boolean, "cohesion": boolean, "mobile": boolean, "subs": boolean },
-                "verdict": string (max 15 mots, ton expert direct)
+                "verdict": string
               }`
             },
           ],
-        },
-        config: {
+        }],
+        generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              hookScore: { type: Type.NUMBER },
-              offerScore: { type: Type.NUMBER },
-              desirabilityScore: { type: Type.NUMBER },
-              checklist: {
-                type: Type.OBJECT,
-                properties: {
-                  contrast: { type: Type.BOOLEAN },
-                  human: { type: Type.BOOLEAN },
-                  text: { type: Type.BOOLEAN },
-                  benefit: { type: Type.BOOLEAN },
-                  social: { type: Type.BOOLEAN },
-                  scarcity: { type: Type.BOOLEAN },
-                  direct: { type: Type.BOOLEAN },
-                  cohesion: { type: Type.BOOLEAN },
-                  mobile: { type: Type.BOOLEAN },
-                  subs: { type: Type.BOOLEAN }
-                },
-                required: ["contrast", "human", "text", "benefit", "social", "scarcity", "direct", "cohesion", "mobile", "subs"]
-              },
-              verdict: { type: Type.STRING }
-            },
-            required: ["hookScore", "offerScore", "desirabilityScore", "checklist", "verdict"]
-          }
         }
       });
 
-      let textOutput = response.text || "{}";
-      
-      // Extraction robuste du JSON (nettoyage si le modèle ajoute du texte autour)
-      const firstBrace = textOutput.indexOf('{');
-      const lastBrace = textOutput.lastIndexOf('}');
-      
-      if (firstBrace !== -1 && lastBrace !== -1) {
-          textOutput = textOutput.substring(firstBrace, lastBrace + 1);
-      }
-
+      const textOutput = result.response.text();
       return JSON.parse(textOutput);
 
     } catch (error) {
