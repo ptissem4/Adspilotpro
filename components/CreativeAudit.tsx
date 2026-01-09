@@ -1,4 +1,3 @@
-
 import React, { useState, ChangeEvent } from 'react';
 import { ExpertAvatar } from './UserDashboard';
 import { VisionService } from '../services/genai';
@@ -32,7 +31,7 @@ export const CreativeAudit = () => {
     const file = e.target.files?.[0];
     if (file) {
       setErrorMsg(null);
-      setVerdict(null); // Reset précédent
+      setVerdict(null);
       setChecklistData(null);
       
       const reader = new FileReader();
@@ -50,13 +49,13 @@ export const CreativeAudit = () => {
     setScanProgress(0);
     setErrorMsg(null);
     
-    // Animation de scan visuelle
+    // Virtual scan animation
     const interval = setInterval(() => {
       setScanProgress(prev => {
-        if (prev >= 90) return prev;
+        if (prev >= 95) return prev;
         return prev + Math.floor(Math.random() * 5) + 1;
       });
-    }, 200);
+    }, 150);
 
     try {
       const pureBase64 = base64.split(',')[1];
@@ -65,7 +64,6 @@ export const CreativeAudit = () => {
       clearInterval(interval);
       setScanProgress(100);
       
-      // Update state
       setScores({
         hook: result.hookScore,
         offer: result.offerScore,
@@ -74,22 +72,19 @@ export const CreativeAudit = () => {
       setChecklistData(result.checklist);
       setVerdict(result.verdict);
 
-      // Save to history & Calculate stats
+      // Save to history
       saveAuditToHistory(base64, result);
       
     } catch (err: any) {
       clearInterval(interval);
       setScanProgress(0);
-      console.error("Erreur Dashboard:", err);
+      console.error("Analysis Error:", err);
       
-      // Traduction conviviale des erreurs techniques
-      let msg = err.message || "Erreur inconnue.";
-      if (msg.includes("API Key") || msg.includes("API_KEY")) {
-        msg = "Clé API manquante. Veuillez configurer 'API_KEY' dans vos variables d'environnement.";
-      } else if (msg.includes("fetch")) {
-        msg = "Erreur de connexion réseau. Vérifiez votre internet.";
-      } else if (msg.includes("candidate")) {
-        msg = "L'IA n'a pas pu analyser cette image. Essayez-en une autre.";
+      let msg = "Une erreur est survenue lors de l'analyse.";
+      if (err.message?.includes("API_KEY")) {
+        msg = "Erreur système : Clé API non configurée correctement.";
+      } else if (err.message?.includes("fetch")) {
+        msg = "Erreur de connexion. Veuillez vérifier votre réseau.";
       }
       
       setErrorMsg(msg);
@@ -102,14 +97,12 @@ export const CreativeAudit = () => {
     const user = AuthService.getCurrentUser();
     if (!user) return;
 
-    // Calcul d'un "CTR estimé" théorique basé sur les scores IA
     const avgScore = (data.hookScore + data.offerScore + data.desirabilityScore) / 3;
-    const estimatedCtrVal = (0.5 + (avgScore / 10) * 2.5).toFixed(2); // Entre 0.5% et 3.0%
+    const estimatedCtrVal = (0.4 + (avgScore / 10) * 2.8).toFixed(2);
     setCtrEstimated(estimatedCtrVal);
     
     const emq = avgScore.toFixed(1);
 
-    // Comptage checklist
     let checkCount = 0;
     if (data.checklist) {
         Object.values(data.checklist).forEach(v => { if(v) checkCount++; });
@@ -125,7 +118,6 @@ export const CreativeAudit = () => {
       checklistScore: checkCount,
       currentCtr: estimatedCtrVal,
       emqScore: emq,
-      // Champs obligatoires dummy
       pmv: '0', margin: '0', targetRoas: '0', targetVolume: '0', currentCpa: '0', currentRoas: '0', 
       currentBudget: '0', niche: 'other', ltv: '0', creativeFormats: [], dataSource: 'manual'
     };
@@ -139,8 +131,6 @@ export const CreativeAudit = () => {
     };
 
     await AuditService.saveAudit(user, inputs, dummyResults, data.verdict, 'CREATIVE', inputs.name || 'Vision Scan');
-    
-    // Signal global pour rafraîchir l'historique
     window.dispatchEvent(new Event('auditSaved'));
   };
 
@@ -160,7 +150,7 @@ export const CreativeAudit = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 h-full">
-      {/* GAUCHE : VISUEL + SCANNER */}
+      {/* LEFT: IMAGE & SCANNER */}
       <div className="relative rounded-[3rem] overflow-hidden border border-slate-700 bg-black flex items-center justify-center group h-[600px]">
         <img src={imagePreview} className={`w-full h-full object-contain transition-all duration-700 ${isAnalyzing ? 'opacity-30 blur-sm scale-105' : ''}`} alt="Upload" />
         
@@ -169,10 +159,8 @@ export const CreativeAudit = () => {
              <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden mb-4 border border-white/10">
                <div className="h-full bg-indigo-500 transition-all duration-200 ease-out shadow-[0_0_15px_rgba(99,102,241,0.8)]" style={{ width: `${scanProgress}%` }}></div>
              </div>
-             <p className="text-indigo-400 font-black uppercase tracking-widest text-xs animate-pulse">Extraction des données...</p>
+             <p className="text-indigo-400 font-black uppercase tracking-widest text-xs animate-pulse">Extraction des signaux...</p>
              <p className="text-slate-500 font-medium text-[10px] mt-2 italic">{scanProgress}%</p>
-             
-             {/* Scanner line effect */}
              <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500/50 shadow-[0_0_50px_rgba(99,102,241,1)] animate-[scan_2s_infinite]"></div>
           </div>
         )}
@@ -182,9 +170,9 @@ export const CreativeAudit = () => {
                 {errorMsg ? (
                     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-8 text-center">
                         <div className="text-4xl mb-4">⚠️</div>
-                        <p className="text-red-400 font-bold mb-6 max-w-xs leading-relaxed">{errorMsg}</p>
-                        <label className="bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-xs cursor-pointer hover:bg-slate-200 transition-colors">
-                            Réessayer une autre image
+                        <p className="text-red-400 font-bold mb-6 max-w-xs">{errorMsg}</p>
+                        <label className="bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-xs cursor-pointer hover:bg-slate-200">
+                            Réessayer
                             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                         </label>
                     </div>
@@ -200,11 +188,10 @@ export const CreativeAudit = () => {
         )}
       </div>
 
-      {/* DROITE : RÉSULTATS */}
+      {/* RIGHT: RESULTS */}
       <div className="space-y-8 overflow-y-auto pr-2 scrollbar-hide h-[600px]">
         {verdict ? (
           <div className="space-y-8 animate-fade-in">
-             {/* CTR CARD */}
              <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20 group">
                 <div className="absolute top-0 right-0 p-10 opacity-10 text-9xl font-black italic group-hover:scale-110 transition-transform">%</div>
                 <div className="relative z-10 text-center">
@@ -213,7 +200,6 @@ export const CreativeAudit = () => {
                 </div>
              </div>
 
-             {/* VERDICT CARD */}
              <div className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden">
                 <div className="relative z-10">
                    <div className="flex items-center gap-3 mb-4">
@@ -224,16 +210,14 @@ export const CreativeAudit = () => {
                 </div>
              </div>
 
-             {/* SCORES GRID */}
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ResultScore label="Score d'Arrêt" score={scores.hook} color="text-amber-400" />
-                <ResultScore label="Clarté Offre" score={scores.offer} color="text-indigo-400" />
+                <ResultScore label="Hook Rate" score={scores.hook} color="text-amber-400" />
+                <ResultScore label="Offre" score={scores.offer} color="text-indigo-400" />
                 <ResultScore label="Désirabilité" score={scores.desire} color="text-emerald-400" />
              </div>
 
-             {/* CHECKLIST */}
              <div className="bg-[#0F0F0F] border border-white/5 rounded-[2.5rem] p-8">
-                <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-4">Protocole 10 Points</h4>
+                <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-4">Checklist de Conformité</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-4">
                    {CHECKLIST_ITEMS.map((item) => {
                       const isValid = checklistData && checklistData[item.id];
@@ -253,7 +237,7 @@ export const CreativeAudit = () => {
           <div className="h-full flex flex-col items-center justify-center text-center opacity-40 border-2 border-dashed border-white/5 rounded-[3rem]">
              <div className="text-6xl mb-6 grayscale">🔮</div>
              <p className="text-slate-400 font-medium italic text-sm uppercase tracking-widest">En attente du signal visuel...</p>
-             <p className="text-slate-600 text-[10px] mt-2 max-w-xs leading-relaxed">Le protocole Architecte scannera votre image pour prédire son potentiel de viralité.</p>
+             <p className="text-slate-600 text-[10px] mt-2 max-w-xs leading-relaxed">Le protocole scannera votre image pour prédire son potentiel de conversion.</p>
           </div>
         )}
       </div>
