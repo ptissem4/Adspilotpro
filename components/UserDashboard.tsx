@@ -7,6 +7,7 @@ import { ResultsDisplay } from './ResultsDisplay.tsx';
 import { CreativeAudit } from './CreativeAudit.tsx';
 import { CreativeResultDisplay } from './CreativeResultDisplay.tsx';
 import { CalculatorForm } from './CalculatorForm.tsx';
+import { AcademyView } from './AcademyView.tsx'; // Import de la nouvelle vue
 import { Logo } from './Logo.tsx';
 import { NICHE_DATA } from '../App.tsx';
 
@@ -21,7 +22,8 @@ interface UserDashboardProps {
   onToggleTheme?: () => void;
 }
 
-type DashboardTab = 'cockpit' | 'history' | 'creative' | 'business' | 'selection' | 'andromeda' | 'analyzing' | 'oracle' | 'mercury' | 'atlas';
+// Ajout de 'academy' aux tabs
+type DashboardTab = 'cockpit' | 'history' | 'creative' | 'business' | 'selection' | 'andromeda' | 'analyzing' | 'oracle' | 'mercury' | 'atlas' | 'academy';
 type AuditFilter = 'ALL' | 'ANDROMEDA' | 'CREATIVE' | 'ORACLE' | 'MERCURY' | 'ATLAS';
 
 const BUDGET_MIN = 10;
@@ -48,6 +50,168 @@ export const ExpertAvatar = ({ className = "w-10 h-10", neon = true }: { classNa
       </svg>
     </div>
   </div>
+);
+
+const SimInput = ({ label, value, valueRaw, unit, min, max, step, onChange, icon, isDark, isLog, displayVal }: any) => {
+  // If isLog is true, we assume value is a real number (e.g. 5000) and we need to convert it to a position (0-100) for the slider
+  const inputValue = isLog && value !== undefined ? budgetToPosition(value) : (value !== undefined ? value : valueRaw);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    onChange(val);
+  };
+  return (
+    <div className="space-y-3">
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <span className="text-xl">{icon}</span>
+                <label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</label>
+            </div>
+            <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayVal || (valueRaw !== undefined ? valueRaw : value) + (unit || '')}</span>
+        </div>
+        <input 
+            type="range" 
+            min={min} 
+            max={max} 
+            step={step} 
+            value={inputValue || 0} 
+            onChange={handleChange}
+            className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-white/10 accent-indigo-500' : 'bg-slate-200 accent-indigo-600'}`} 
+        />
+    </div>
+  );
+};
+
+const ResultCard = ({ label, value, highlight, sub, extra, isDark }: any) => {
+    let colorClass = isDark ? 'text-white' : 'text-slate-900';
+    if (highlight === 'danger') colorClass = 'text-red-500';
+    if (highlight === 'success') colorClass = 'text-emerald-500';
+    if (highlight === 'indigo') colorClass = 'text-indigo-500';
+
+    return (
+        <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-sm'} flex flex-col justify-between h-full`}>
+            <div>
+                <p className={`text-[9px] font-black uppercase tracking-widest mb-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+                <p className={`text-3xl font-black tracking-tighter ${colorClass}`}>{value}</p>
+            </div>
+            <div className="mt-6 pt-4 border-t border-dashed border-white/5">
+                <p className={`text-[10px] font-medium italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sub}</p>
+                {extra && <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mt-1">{extra}</p>}
+            </div>
+        </div>
+    );
+};
+
+const RadarChart = ({ metrics, labels, isDark }: any) => {
+    // Simple SVG implementation for Radar Chart
+    // metrics is array of 5 numbers 0-10
+    const size = 200;
+    const center = size / 2;
+    const radius = size * 0.4;
+    const angleStep = (Math.PI * 2) / 5;
+    
+    const points = metrics.map((val: number, i: number) => {
+        const r = (val / 10) * radius;
+        const angle = i * angleStep - Math.PI / 2;
+        const x = center + r * Math.cos(angle);
+        const y = center + r * Math.sin(angle);
+        return `${x},${y}`;
+    }).join(' ');
+
+    const bgPoints = [10, 7.5, 5, 2.5].map(scale => {
+         return Array.from({length: 5}).map((_, i) => {
+             const r = (scale / 10) * radius;
+             const angle = i * angleStep - Math.PI / 2;
+             const x = center + r * Math.cos(angle);
+             const y = center + r * Math.sin(angle);
+             return `${x},${y}`;
+         }).join(' ');
+    });
+
+    const axisPoints = Array.from({length: 5}).map((_, i) => {
+        const angle = i * angleStep - Math.PI / 2;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        return { x, y, label: labels[i] };
+    });
+
+    return (
+        <div className="relative w-full h-full flex items-center justify-center">
+            <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full max-w-[250px] max-h-[250px]">
+                {bgPoints.map((pts, i) => (
+                    <polygon key={i} points={pts} fill="none" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} strokeWidth="1" />
+                ))}
+                {axisPoints.map((pt, i) => (
+                    <line key={i} x1={center} y1={center} x2={pt.x} y2={pt.y} stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} strokeWidth="1" />
+                ))}
+                <polygon points={points} fill="rgba(99, 102, 241, 0.2)" stroke="#6366F1" strokeWidth="2" />
+                {axisPoints.map((pt, i) => {
+                     // Adjust label position
+                     const angle = i * angleStep - Math.PI / 2;
+                     const labelX = center + (radius + 20) * Math.cos(angle);
+                     const labelY = center + (radius + 15) * Math.sin(angle);
+                     return (
+                        <text key={i} x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle" className={`text-[8px] font-black uppercase ${isDark ? 'fill-slate-400' : 'fill-slate-500'}`} style={{fontSize: '8px'}}>
+                            {pt.label}
+                        </text>
+                     )
+                })}
+            </svg>
+        </div>
+    );
+};
+
+const ModuleCard = ({ title, desc, color, isDark, onClick }: any) => {
+    const colorClasses: any = {
+        emerald: { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500/20', hover: 'hover:border-emerald-500' },
+        indigo: { bg: 'bg-indigo-500', text: 'text-indigo-500', border: 'border-indigo-500/20', hover: 'hover:border-indigo-500' },
+        violet: { bg: 'bg-violet-500', text: 'text-violet-500', border: 'border-violet-500/20', hover: 'hover:border-violet-500' },
+        blue: { bg: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500/20', hover: 'hover:border-blue-500' },
+        amber: { bg: 'bg-amber-500', text: 'text-amber-500', border: 'border-amber-500/20', hover: 'hover:border-amber-500' },
+    };
+    const c = colorClasses[color] || colorClasses.indigo;
+
+    return (
+        <button onClick={onClick} className={`p-8 rounded-[3rem] border text-left transition-all duration-300 group hover:-translate-y-2 hover:shadow-2xl ${isDark ? `bg-[#0A0A0A] ${c.border}` : 'bg-white border-slate-100 shadow-xl'} ${c.hover}`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-6 transition-transform group-hover:scale-110 ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+               <span className={`w-4 h-4 rounded-full ${c.bg}`}></span>
+            </div>
+            <h3 className={`text-xl font-black uppercase italic tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3>
+            <p className={`text-xs font-medium italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</p>
+        </button>
+    );
+};
+
+const SimField = ({ label, value, onChange, isDark }: any) => (
+    <div className="space-y-2">
+       <label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</label>
+       <input type="number" value={value} onChange={(e) => onChange(e.target.value)} className={`w-full border rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 ring-indigo-500 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-[#E2E8F0] text-[#0F172A]'}`} />
+    </div>
+);
+
+const FilterTab = ({ label, count, active, onClick, color, isDark }: any) => (
+    <button onClick={onClick} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${active ? 'bg-indigo-600 text-white border-indigo-600' : (isDark ? 'text-slate-500 border-transparent hover:bg-white/5' : 'text-slate-500 border-transparent hover:bg-slate-100')}`}>
+        {label} <span className="opacity-50 ml-1">({count})</span>
+    </button>
+);
+
+const AuditCard = ({ audit, badge, isDark, onDelete, onView }: any) => (
+    <div onClick={() => onView(audit)} className={`relative rounded-[2.5rem] p-8 border cursor-pointer transition-all hover:-translate-y-2 hover:shadow-2xl group flex flex-col ${isDark ? 'bg-[#0A0A0A] border-white/5 hover:border-indigo-500/50' : 'bg-white border-slate-100 shadow-xl hover:border-indigo-200'}`}>
+        <div className={`absolute top-0 left-0 w-full h-1.5 ${badge.color.split(' ')[0].replace('/10', '')}`}></div>
+        <div className="flex justify-between items-start mb-6">
+            <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${badge.color}`}>{badge.label}</span>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(audit.id); }} className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all ${isDark ? 'text-slate-600 bg-white/5' : 'text-slate-300 bg-slate-50'}`}>✕</button>
+        </div>
+        <h4 className={`text-xl font-black uppercase italic tracking-tight mb-2 line-clamp-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{audit.name}</h4>
+        <p className={`text-[10px] font-bold uppercase tracking-widest mb-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{new Date(audit.date).toLocaleDateString()}</p>
+        <div className="mt-auto pt-4 border-t border-dashed border-white/10 flex justify-between items-end">
+            <div>
+               <p className={`text-[8px] font-black uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Verdict</p>
+               <p className={`text-xs font-bold italic ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{audit.verdictLabel}</p>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'}`}>➔</div>
+        </div>
+    </div>
 );
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit, onNewAudit, onConsulting, onLogout, onNotification, theme = 'dark', onToggleTheme }) => {
@@ -187,6 +351,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
     }
   };
 
+  // ... (Submit handlers unchanged for Andromeda, Oracle, Mercury, Atlas, Business) ...
   const handleAndromedaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -307,6 +472,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
        </div>
        <div className="flex-1 overflow-y-auto p-6 space-y-2">
           <SidebarItem icon="📊" label="Cockpit P&L" active={activeTab === 'cockpit'} isDark={isDark} onClick={() => { setActiveTab('cockpit'); setIsMobileMenuOpen(false); }} />
+          <SidebarItem icon="🎓" label="Académie" active={activeTab === 'academy'} isDark={isDark} onClick={() => { setActiveTab('academy'); setIsMobileMenuOpen(false); }} />
           <SidebarItem icon="✨" label="Lancer Audit" active={activeTab === 'selection'} isDark={isDark} onClick={() => { setActiveTab('selection'); setIsMobileMenuOpen(false); }} />
           <SidebarItem icon="📂" label="Mes Audits" active={activeTab === 'history'} isDark={isDark} onClick={() => { setActiveTab('history'); setIsMobileMenuOpen(false); }} />
           <SidebarItem icon="🏢" label="Mon Business" active={activeTab === 'business'} isDark={isDark} onClick={() => { setActiveTab('business'); setIsMobileMenuOpen(false); }} />
@@ -396,6 +562,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
             </div>
             <nav className="space-y-2 flex-1">
                <SidebarItem icon="📊" label="Cockpit P&L" active={activeTab === 'cockpit'} isDark={isDark} onClick={() => setActiveTab('cockpit')} />
+               <SidebarItem icon="🎓" label="Académie" active={activeTab === 'academy'} isDark={isDark} onClick={() => setActiveTab('academy')} />
                <SidebarItem icon="✨" label="Lancer Audit" active={activeTab === 'selection' || activeTab === 'andromeda' || activeTab === 'creative' || activeTab === 'oracle' || activeTab === 'mercury' || activeTab === 'atlas'} isDark={isDark} onClick={() => setActiveTab('selection')} />
                <SidebarItem icon="📂" label="Mes Audits" active={activeTab === 'history'} isDark={isDark} onClick={() => setActiveTab('history')} />
                <SidebarItem icon="🏢" label="Mon Business" active={activeTab === 'business'} isDark={isDark} onClick={() => setActiveTab('business')} />
@@ -409,7 +576,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
             <div className="flex items-center gap-4">
               <ExpertAvatar />
               <h2 className={`text-[10px] font-black italic uppercase tracking-[0.4em] ${isDark ? 'text-slate-500' : 'text-[#0F172A]'}`}>
-                 {activeTab === 'business' ? "MON BUSINESS" : activeTab === 'history' ? "MES AUDITS" : "PILOTAGE STRATÉGIQUE"}
+                 {activeTab === 'business' ? "MON BUSINESS" : activeTab === 'history' ? "MES AUDITS" : activeTab === 'academy' ? "ACADÉMIE EXPERT" : "PILOTAGE STRATÉGIQUE"}
               </h2>
             </div>
             <div className="flex items-center gap-6">
@@ -431,6 +598,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
               </div>
             ) : activeTab === 'cockpit' ? (
               <div className="p-6 md:p-12 animate-fade-in space-y-8 pb-32 w-full max-w-[1600px] mx-auto">
+                {/* ... (Contenu Cockpit existant inchangé) ... */}
                 <div className="w-full bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-[2rem] p-8 md:p-10 mb-8 flex items-center justify-between shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
                     <div className="relative z-10">
@@ -444,24 +612,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
                 </div>
 
                 <div className="flex flex-col xl:flex-row gap-8 items-start">
-                   {/* MOBILE: Layout Stack (Résultats > Simulator > Radar) */}
-                   {/* DESKTOP: Layout 2 colonnes (Inputs | Résultats + Radar) */}
-                   
-                   {/* INPUTS CONTAINER: Order 2 on Mobile (Middle), Order 1 on Desktop (Left) */}
                    <div className="w-full xl:w-1/3 shrink-0 flex flex-col gap-6 order-2 xl:order-1" ref={simulatorRef}>
                       {InputSection}
                    </div>
-
-                   {/* RESULTS CONTAINER: Order 1 on Mobile (Top), Order 2 on Desktop (Right) */}
                    <div className="w-full xl:w-2/3 flex flex-col gap-8 order-1 xl:order-2">
-                      {/* Pour Mobile: Resultats puis Radar à la fin */}
-                      {/* Pour Desktop: Resultats puis Radar aussi */}
-                      {/* Le flex-col standard ici mettra Results en haut puis Radar en dessous, ce qui correspond à la demande Desktop */}
-                      {/* Mais sur Mobile, ce bloc entier est au dessus des inputs. */}
-                      {/* Donc on a: [Results + Radar] -> [Inputs]. C'est l'inverse de ce que veut le prompt pour le Radar. */}
-                      {/* Le prompt veut: KPIs -> Simulator -> Radar. */}
-                      
-                      {/* Solution pour MOBILE ONLY : Cacher le Radar ici et l'afficher après les inputs */}
                       <div className="flex flex-col gap-8">
                          {ResultCardsSection}
                          <div className="hidden xl:block">
@@ -469,16 +623,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
                          </div>
                       </div>
                    </div>
-                   
-                   {/* RADAR MOBILE ONLY : Order 3 (Bottom) */}
                    <div className="w-full order-3 xl:hidden">
                       {RadarSection}
                    </div>
                 </div>
               </div>
+            ) : activeTab === 'academy' ? (
+                // NOUVEL ONGLET ACADÉMIE
+                <AcademyView isDark={isDark} />
             ) : activeTab === 'business' ? (
+              // ... (Reste des onglets existants inchangé)
               <div className="p-8 md:p-16 max-w-5xl mx-auto animate-fade-in space-y-12 pb-32">
-                 {/* ... (Contenu Business inchangé) ... */}
                  <div className="flex flex-col gap-6">
                     <h1 className={`text-5xl md:text-7xl font-black italic uppercase tracking-tighter ${isDark ? 'text-white' : 'text-[#0F172A]'}`}>MON <span className="text-indigo-500">BUSINESS</span></h1>
                     <p className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium italic`}>Configurez votre infrastructure stratégique pour des diagnostics ultra-précis.</p>
@@ -665,88 +820,5 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, latestAudit,
         </div>
       )}
     </div>
-  );
-};
-
-const AuditCard = ({ audit, badge, isDark, onDelete, onView }: any) => (
-  <div className={`${isDark ? 'bg-[#0A0A0A] border-white/5 hover:border-indigo-500/50' : 'bg-white border-[#E2E8F0] hover:border-indigo-400 shadow-xl shadow-slate-200/20'} border p-8 rounded-[3rem] transition-all group relative flex flex-col min-h-[480px] overflow-hidden cursor-pointer`} onClick={() => onView(audit)}>
-    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(audit.id); }} className="absolute top-6 right-6 z-30 w-10 h-10 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">✕</button>
-    <div className="mb-6"><span className={`border px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${badge.color}`}>{badge.label}</span></div>
-    <div className="mb-8 flex-1 flex flex-col justify-center">
-       {audit.type === 'CREATIVE' ? <div className={`aspect-square rounded-[2.5rem] ${isDark ? 'bg-[#0F0F0F] border-white/5' : 'bg-slate-50 border-slate-100'} border overflow-hidden shadow-inner`}><img src={audit.inputs.creativeImageUrl} className="w-full h-full object-contain" /></div> : <div className={`${isDark ? 'bg-emerald-600/5 border-emerald-500/10' : 'bg-emerald-50 border-emerald-100'} border p-6 rounded-[2.5rem] space-y-4`}><p className={`text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>ROAS Point Mort</p><p className={`text-4xl font-black ${isDark ? 'text-white' : 'text-[#0F172A]'}`}>{audit.results.roasThreshold.toFixed(2)}x</p></div>}
-    </div>
-    <div className={`mt-auto pt-6 border-t ${isDark ? 'border-white/5' : 'border-slate-100'}`}><h4 className={`text-xl font-black uppercase tracking-tight mb-2 truncate ${isDark ? 'text-white' : 'text-[#0F172A]'}`}>{audit.name}</h4><div className="flex justify-between items-center"><p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(audit.date).toLocaleDateString()}</p></div></div>
-  </div>
-);
-
-const FilterTab = ({ label, count, active, onClick, color, isDark }: any) => (
-  <button onClick={onClick} className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isDark ? 'border-white/5' : 'border-[#E2E8F0]'} flex items-center gap-2 ${active ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'}`}>
-    {label} <span className="opacity-40">({count})</span>
-  </button>
-);
-
-const ModuleCard = ({ title, desc, color, isDark, onClick }: any) => {
-  const c: any = { emerald: 'emerald-600', indigo: 'indigo-600', violet: 'violet-600', blue: 'blue-600', amber: 'amber-600' };
-  return (
-    <button onClick={onClick} className={`${isDark ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-[#E2E8F0] shadow-xl shadow-slate-200/50'} border p-10 rounded-[2.5rem] text-left transition-all group`}>
-      <h3 className={`text-2xl font-black uppercase italic tracking-tighter mb-4 transition-colors ${isDark ? 'text-white' : 'text-[#0F172A]'}`}>{title}</h3>
-      <p className="text-slate-500 text-sm italic mb-8 font-medium">{desc}</p>
-      <span className={`bg-${c[color]} text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-lg`}>Lancer Scan &rarr;</span>
-    </button>
-  );
-};
-
-const SimField = ({ label, value, onChange, isDark }: any) => (
-  <div className="space-y-2">
-    <label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</label>
-    <input type="number" step="0.1" value={value} onChange={(e) => onChange(e.target.value)} className={`w-full border rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 ring-indigo-500 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-[#E2E8F0] text-[#0F172A]'}`} />
-  </div>
-);
-
-const SimInput = ({ label, value, unit, min, max, step, onChange, icon, isLog = false, valueRaw, displayVal, isDark }: any) => {
-  const finalPos = isLog ? budgetToPosition(value || 10) : valueRaw;
-  return (
-    <div className="space-y-5">
-       <div className="flex justify-between items-center gap-6 text-[10px] font-black uppercase tracking-widest">
-          <span className={`${isDark ? 'text-slate-600' : 'text-slate-400'} shrink-0`}>{icon} {label}</span>
-          <span className={`italic font-bold tabular-nums whitespace-nowrap ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{displayVal || `${(valueRaw || 0).toLocaleString()} ${unit}`}</span>
-       </div>
-       <input type="range" min={min} max={max} step={step} value={finalPos || 0} onChange={(e) => onChange(parseFloat(e.target.value))} className={`w-full h-1.5 rounded-full appearance-none cursor-pointer accent-indigo-500 ${isDark ? 'bg-[#1A1A1A]' : 'bg-slate-200'}`} />
-    </div>
-  );
-};
-
-const ResultCard = ({ label, value, sub, highlight, extra, isDark }: any) => (
-  <div className={`p-8 rounded-[2.5rem] border flex flex-col gap-2 transition-all ${highlight === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : highlight === 'danger' ? 'bg-red-500/10 border-red-500/20 text-red-600' : highlight === 'indigo' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600' : (isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-[#E2E8F0] text-[#0F172A] shadow-xl shadow-slate-200/30')}`}>
-     <p className={`text-[9px] font-black uppercase ${isDark ? 'opacity-60' : 'text-slate-400'}`}>{label}</p>
-     <p className="text-2xl md:text-3xl font-black tabular-nums tracking-tighter truncate">{value}</p>
-     {extra && <p className={`text-[10px] font-black uppercase mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{extra}</p>}
-     <p className={`text-[8px] font-bold uppercase italic ${isDark ? 'opacity-40' : 'text-slate-400'}`}>{sub}</p>
-  </div>
-);
-
-const RadarChart = ({ metrics, labels, isDark }: any) => {
-  const size = 300; const center = size / 2; const radius = size * 0.35; const sides = metrics.length;
-  const points = metrics.map((val: any, i: any) => {
-    const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
-    const normVal = (val / 10) * radius;
-    return { x: center + Math.cos(angle) * normVal, y: center + Math.sin(angle) * normVal };
-  });
-  const pathData = points.map((p: any, i: any) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
-  const labelColor = isDark ? "fill-slate-500" : "fill-[#0F172A]";
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className={`w-full h-full ${isDark ? 'drop-shadow-[0_0_30px_rgba(99,102,241,0.6)]' : ''}`}>
-      {[0.2, 0.4, 0.6, 0.8, 1].map((r, idx) => (<circle key={idx} cx={center} cy={center} r={radius * r} fill="none" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)"} strokeWidth="1" />))}
-      {metrics.map((_: any, i: any) => {
-        const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
-        return (
-          <React.Fragment key={i}>
-            <line x1={center} y1={center} x2={center + Math.cos(angle) * radius} y2={center + Math.sin(angle) * radius} stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.3)"} strokeWidth="1.5" />
-            <text x={center + Math.cos(angle) * (radius + 25)} y={center + Math.sin(angle) * (radius + 25)} textAnchor="middle" dominantBaseline="middle" className={`text-[10px] font-black uppercase tracking-widest ${labelColor}`}>{labels[i]}</text>
-          </React.Fragment>
-        );
-      })}
-      <path d={pathData} fill={isDark ? "rgba(99, 102, 241, 0.3)" : "rgba(99, 102, 241, 0.5)"} stroke="#6366f1" strokeWidth="3" strokeLinejoin="round" />
-    </svg>
   );
 };

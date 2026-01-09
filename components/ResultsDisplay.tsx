@@ -32,7 +32,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, inputs,
   const [ltvBoost, setLtvBoost] = useState(30);
 
   const currentUser = AuthService.getCurrentUser();
-  const userName = currentUser?.firstName || "Expert";
+  // Fixed: UserProfile has full_name instead of firstName
+  const userName = currentUser?.full_name?.split(' ')[0] || "Expert";
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(isNaN(val) ? 0 : val);

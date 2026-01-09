@@ -1,4 +1,3 @@
-
 export interface CalculatorInputs {
   pmv: string;
   margin: string;
@@ -16,14 +15,12 @@ export interface CalculatorInputs {
   email?: string;
   projectName?: string;
   notes?: string;
-  // Variables Hardcore
   cpm?: string;
-  cogs?: string; // Coût produit
+  cogs?: string;
   shippingCost?: string;
-  retentionRate?: string; // % rachat
+  retentionRate?: string;
   productUrl?: string;
   brand_name?: string;
-  // Champs spécifiques Audit Créatif
   auditType?: 'pnl' | 'creative';
   type?: 'ANDROMEDA' | 'CREATIVE' | 'ORACLE' | 'MERCURY' | 'ATLAS';
   name?: string;
@@ -32,12 +29,11 @@ export interface CalculatorInputs {
   creativeOfferScore?: number;
   creativeDesirabilityScore?: number;
   creativeImageUrl?: string;
-  // Champs spécifiques nouveaux modules
-  loadTime?: string; // Mercury
-  atcRate?: string; // Mercury
-  abandonmentRate?: string; // Mercury
-  stockLevel?: string; // Atlas
-  leadTimeDays?: string; // Atlas
+  loadTime?: string;
+  atcRate?: string;
+  abandonmentRate?: string;
+  stockLevel?: string;
+  leadTimeDays?: string;
 }
 
 export interface CalculationResults {
@@ -64,7 +60,6 @@ export interface CalculationResults {
   tresorerieLatenteHebdo: number;
   andromedaOptimized: boolean;
   creativeDiversityScore: number;
-  // Champs Hardcore / Nouveaux modules
   realNetProfit?: number;
   breakevenRoas?: number;
   estimatedCtr?: number;
@@ -79,19 +74,16 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name?: string;
-  firstName?: string;
-  name?: string;
   role: 'user' | 'admin';
   createdAt: string;
   purchasedProducts?: string[]; 
   consultingValue?: number;
-  isLocal?: boolean;
-  // Données Business
   brand_name?: string;
   website_url?: string;
   shop_logo?: string;
   niche?: string;
   target_cpa?: number;
+  has_andromeda_access?: boolean; // Accès Masterclass
 }
 
 export interface SimulationHistory {
@@ -114,17 +106,28 @@ export interface NicheData {
   benchmarkCtr: number;
 }
 
-export interface LeadData {
-  user: UserProfile;
-  lastSimulation: SimulationHistory | null;
-  status: 'new' | 'contacted' | 'closed' | 'buyer' | 'waitlist';
+export interface Lesson {
+  id: string;
+  title: string;
+  duration: string;
+  videoUrl: string;
+  isCompleted: boolean;
+  isLocked: boolean;
 }
 
-export interface Guide {
+export interface Module {
   id: string;
   title: string;
   description: string;
-  price: string;
-  icon: string;
-  link: string;
+  thumbnail: string;
+  progress: number;
+  lessons: Lesson[];
+  isLocked: boolean;
+}
+
+// Added missing LeadData interface used by AdminDashboard and AdminService
+export interface LeadData {
+  user: UserProfile;
+  lastSimulation: any | null;
+  status: 'new' | 'waitlist' | 'contacted' | 'buyer' | 'closed';
 }

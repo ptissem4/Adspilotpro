@@ -1,17 +1,33 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Fonction utilitaire robuste pour récupérer la clé API sur Netlify/Vercel/Local
+const getApiKey = (): string | undefined => {
+  try {
+    // 1. Essayer via import.meta.env (Standard Vite / Netlify moderne)
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+      // @ts-ignore
+      if (import.meta.env.API_KEY) return import.meta.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("⚠️ Impossible de lire les variables d'environnement");
+  }
+  return undefined;
+};
+
 export const VisionService = {
   analyzeCreative: async (base64Image: string, mimeType: string) => {
-    // 1. Récupération de la clé API via variable d'environnement (Sécurisé pour Netlify)
-    const apiKey = process.env.API_KEY;
+    const apiKey = getApiKey();
     
-    // Si aucune clé n'est trouvée, on bloque avec un message clair pour le debugging
+    // Protection anti-crash : on ne lance pas l'appel si la clé est absente
     if (!apiKey) {
-      console.error("❌ ERREUR CONFIGURATION : API_KEY est manquante.");
-      throw new Error("Clé API manquante. Configurez API_KEY dans le dashboard Netlify ou votre fichier .env");
+      console.error("❌ ERREUR CONFIGURATION : Aucune clé API trouvée (VITE_API_KEY ou API_KEY).");
+      throw new Error("Configuration manquante : Ajoutez VITE_API_KEY dans les réglages Netlify.");
     }
 
-    // 2. Initialisation du client en mode RÉEL
+    // Initialisation du client
     const ai = new GoogleGenAI({ apiKey });
     
     try {
@@ -75,7 +91,7 @@ export const VisionService = {
 
       let textOutput = response.text || "{}";
       
-      // Extraction robuste du JSON (au cas où le modèle ajoute du texte avant/après)
+      // Extraction robuste du JSON (nettoyage si le modèle ajoute du texte autour)
       const firstBrace = textOutput.indexOf('{');
       const lastBrace = textOutput.lastIndexOf('}');
       
